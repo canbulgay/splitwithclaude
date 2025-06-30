@@ -1,0 +1,8 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Workspace-wide settings
+prefer-workspace-packages: true
+shared-workspace-lockfile: true
+save-workspace-protocol: rolling
