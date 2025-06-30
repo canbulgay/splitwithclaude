@@ -139,6 +139,8 @@ server/
 **Context7**: "Implement Prisma schema for expenses, use context7", "Create React form with validation, use context7"
 **Combined**: "Analyze current auth files and update with latest NextAuth patterns, use context7"
 
+<!-- This section doesnt seem with claude ai -->
+
 ## Quality Verification (Before Any Commit)
 
 - [ ] All tests passing (unit + integration)
@@ -147,6 +149,8 @@ server/
 - [ ] Performance impact assessed
 - [ ] PROGRESS.md updated with session summary
 - [ ] Used "use context7" for any new library implementations
+
+<!-- This section doesnt seem with claude ai -->
 
 ## Session Documentation Requirements
 
@@ -157,15 +161,6 @@ server/
 - Tests added/modified
 - Known issues or technical debt
 - Next recommended steps
-
-## Environment Variables
-
-```bash
-DATABASE_URL=postgresql://...
-NEXTAUTH_SECRET=...
-STRIPE_SECRET_KEY=sk_...
-EMAIL_API_KEY=...
-```
 
 ## UI/UX Guidelines
 

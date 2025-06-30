@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - core user information
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  createdGroups  Group[]         @relation("GroupCreator")
+  groupMembers   GroupMember[]
+  expensesPaid   Expense[]       @relation("ExpensePaidBy")
+  expenseSplits  ExpenseSplit[]
+  settlementsFrom Settlement[]   @relation("SettlementFrom")
+  settlementsTo   Settlement[]   @relation("SettlementTo")
+
+  @@map("users")
+}
+
+// Group model - expense sharing groups
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  creator     User          @relation("GroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  members     GroupMember[]
+  expenses    Expense[]
+
+  @@map("groups")
+}
+
+// Group membership model - many-to-many relationship between users and groups
+model GroupMember {
+  groupId   String   @map("group_id")
+  userId    String   @map("user_id")
+  role      Role     @default(MEMBER)
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  // Relationships
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@map("group_members")
+}
+
+// Expense model - individual expense records
+model Expense {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  amount      Decimal  @db.Decimal(10, 2) // Support up to 99,999,999.99
+  description String
+  paidBy      String   @map("paid_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relationships
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer       User           @relation("ExpensePaidBy", fields: [paidBy], references: [id], onDelete: Cascade)
+  splits      ExpenseSplit[]
+  settlements SettlementExpense[]
+
+  @@index([groupId])
+  @@index([paidBy])
+  @@map("expenses")
+}
+
+// Expense split model - how expenses are divided among users
+model ExpenseSplit {
+  expenseId   String  @map("expense_id")
+  userId      String  @map("user_id")
+  amountOwed  Decimal @db.Decimal(10, 2) @map("amount_owed")
+
+  // Relationships
+  expense     Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([expenseId, userId])
+  @@map("expense_splits")
+}
+
+// Settlement model - debt settlements between users
+model Settlement {
+  id        String   @id @default(cuid())
+  fromUser  String   @map("from_user")
+  toUser    String   @map("to_user")
+  amount    Decimal  @db.Decimal(10, 2)
+  settledAt DateTime @default(now()) @map("settled_at")
+
+  // Relationships
+  fromUserRel   User                @relation("SettlementFrom", fields: [fromUser], references: [id], onDelete: Cascade)
+  toUserRel     User                @relation("SettlementTo", fields: [toUser], references: [id], onDelete: Cascade)
+  expenses      SettlementExpense[]
+
+  @@index([fromUser])
+  @@index([toUser])
+  @@map("settlements")
+}
+
+// Junction table for settlements and related expenses
+model SettlementExpense {
+  settlementId String @map("settlement_id")
+  expenseId    String @map("expense_id")
+
+  // Relationships
+  settlement   Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  expense      Expense    @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@id([settlementId, expenseId])
+  @@map("settlement_expenses")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  MEMBER
+}

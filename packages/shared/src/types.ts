@@ -1,4 +1,4 @@
-// Core domain types for Splitwise MVP
+// Core domain types for Splitwise MVP (matching Prisma schema)
 
 export interface User {
   id: string
@@ -21,7 +21,7 @@ export interface Group {
 export interface GroupMember {
   groupId: string
   userId: string
-  role: 'admin' | 'member'
+  role: Role
   joinedAt: Date
 }
 
@@ -47,7 +47,17 @@ export interface Settlement {
   toUser: string
   amount: number
   settledAt: Date
-  expenseIds: string[]
+}
+
+export interface SettlementExpense {
+  settlementId: string
+  expenseId: string
+}
+
+// Enums
+export enum Role {
+  ADMIN = 'ADMIN',
+  MEMBER = 'MEMBER',
 }
 
 // API Response types

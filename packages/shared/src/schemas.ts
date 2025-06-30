@@ -1,8 +1,9 @@
 import { z } from 'zod'
+import { Role } from './types'
 
 // User schemas
 export const userSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().cuid(),
   email: z.string().email(),
   name: z.string().min(1).max(100),
   avatarUrl: z.string().url().optional(),
@@ -19,12 +20,19 @@ export const createUserSchema = z.object({
 
 // Group schemas
 export const groupSchema = z.object({
-  id: z.string().uuid(),
+  id: z.string().cuid(),
   name: z.string().min(1).max(100),
   description: z.string().max(500).optional(),
-  createdBy: z.string().uuid(),
+  createdBy: z.string().cuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
+})
+
+export const groupMemberSchema = z.object({
+  groupId: z.string().cuid(),
+  userId: z.string().cuid(),
+  role: z.nativeEnum(Role),
+  joinedAt: z.date(),
 })
 
 export const createGroupSchema = z.object({
@@ -34,22 +42,28 @@ export const createGroupSchema = z.object({
 
 // Expense schemas
 export const expenseSchema = z.object({
-  id: z.string().uuid(),
-  groupId: z.string().uuid(),
+  id: z.string().cuid(),
+  groupId: z.string().cuid(),
   amount: z.number().positive().multipleOf(0.01),
   description: z.string().min(1).max(200),
-  paidBy: z.string().uuid(),
+  paidBy: z.string().cuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
 })
 
+export const expenseSplitSchema = z.object({
+  expenseId: z.string().cuid(),
+  userId: z.string().cuid(),
+  amountOwed: z.number().positive().multipleOf(0.01),
+})
+
 export const createExpenseSchema = z.object({
-  groupId: z.string().uuid(),
+  groupId: z.string().cuid(),
   amount: z.number().positive().multipleOf(0.01),
   description: z.string().min(1).max(200),
-  paidBy: z.string().uuid(),
+  paidBy: z.string().cuid(),
   splits: z.array(z.object({
-    userId: z.string().uuid(),
+    userId: z.string().cuid(),
     amount: z.number().positive().multipleOf(0.01),
   })),
 })
@@ -58,7 +72,7 @@ export const createExpenseSchema = z.object({
 export const splitSchema = z.object({
   method: z.enum(['equal', 'exact', 'percentage']),
   splits: z.array(z.object({
-    userId: z.string().uuid(),
+    userId: z.string().cuid(),
     amount: z.number().positive().multipleOf(0.01).optional(),
     percentage: z.number().min(0).max(100).optional(),
   })),
@@ -66,19 +80,23 @@ export const splitSchema = z.object({
 
 // Settlement schemas
 export const settlementSchema = z.object({
-  id: z.string().uuid(),
-  fromUser: z.string().uuid(),
-  toUser: z.string().uuid(),
+  id: z.string().cuid(),
+  fromUser: z.string().cuid(),
+  toUser: z.string().cuid(),
   amount: z.number().positive().multipleOf(0.01),
   settledAt: z.date(),
-  expenseIds: z.array(z.string().uuid()),
+})
+
+export const settlementExpenseSchema = z.object({
+  settlementId: z.string().cuid(),
+  expenseId: z.string().cuid(),
 })
 
 export const createSettlementSchema = z.object({
-  fromUser: z.string().uuid(),
-  toUser: z.string().uuid(),
+  fromUser: z.string().cuid(),
+  toUser: z.string().cuid(),
   amount: z.number().positive().multipleOf(0.01),
-  expenseIds: z.array(z.string().uuid()),
+  expenseIds: z.array(z.string().cuid()).optional(),
 })
 
 // API response schemas

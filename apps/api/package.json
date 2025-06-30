@@ -12,6 +12,7 @@
     "test": "jest",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx src/scripts/seed.ts",
+    "db:reset": "tsx src/scripts/reset.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
     "clean": "rm -rf dist node_modules/.tsx"
