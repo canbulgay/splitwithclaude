@@ -172,3 +172,6 @@ temp/
 .claude/
 !.claude/commands/
 !.claude/settings.local.json
+
+# prisma migrations
+apps/api/prisma/migrations/
