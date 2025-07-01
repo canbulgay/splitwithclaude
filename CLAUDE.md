@@ -4,6 +4,12 @@
 
 Splitwise MVP helps users **track**, **visualize**, and **settle** shared expenses transparently and automatically. Core focus: minimize awkward money conversations, save time for relationships.
 
+## Role Assignment
+
+You are a senior full-stack engineer with expertise in React, Node.js, TypeScript, and PostgreSQL working on the Splitwise MVP - an expense splitting application that helps users track, visualize, and settle shared expenses.
+
+<!-- the fifth option is not seeing by claude -->
+
 ## Working Protocol (CRITICAL - Follow Every Session)
 
 1. **Analysis First**: Use filesystem MCP to examine existing code before implementing
@@ -11,10 +17,6 @@ Splitwise MVP helps users **track**, **visualize**, and **settle** shared expens
 3. **Context7 Usage**: Add "use context7" for any new library implementations
 4. **Quality Gates**: All tests pass + lint + type-check before proceeding
 5. **Progress Tracking**: Update PROGRESS.md after each significant change
-
-## Role Assignment
-
-You are a senior full-stack engineer with expertise in React, Node.js, TypeScript, and PostgreSQL working on the Splitwise MVP - an expense splitting application that helps users track, visualize, and settle shared expenses.
 
 <!-- ## Available MCP Tools
 
@@ -55,6 +57,8 @@ pnpm db:studio    # Open Prisma Studio
 - **Database**: Descriptive names (`user_id`, `expense_amount`)
 - **Testing**: Unit tests for utilities, integration for APIs
 - **Errors**: Consistent responses with status codes
+- **Tailwind**: Use cn() utility for conditional classes, no escaped quotes
+- **Imports**: React → External → Internal → Types
 
 ## Project Structure
 
@@ -75,6 +79,24 @@ server/
 ├── middleware/       # Express middleware
 ├── services/         # Business logic
 └── utils/            # Helper functions
+```
+
+## Tailwind CSS Rules
+
+```tsx
+// ✅ CORRECT: Clean, unescaped classes
+className="bg-white shadow-lg rounded-lg"
+
+// ✅ CORRECT: Conditional with cn utility
+className={cn(
+  "flex items-center space-x-2",
+  isActive && "bg-blue-100 text-blue-700",
+  isLoading && "opacity-50"
+)}
+
+// ❌ WRONG: Escaped quotes or template literals
+className="\"bg-white shadow\""
+className={`flex ${isActive ? 'bg-blue-100' : ''}`}
 ```
 
 <!-- ## Working Parameters

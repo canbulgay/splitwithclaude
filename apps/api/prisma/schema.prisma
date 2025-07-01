@@ -15,7 +15,11 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
+  password  String?  // Optional for OAuth users
   avatarUrl String?  @map("avatar_url")
+  provider  String   @default("credentials") // "credentials", "google", "github", etc.
+  providerId String? @map("provider_id") // ID from OAuth provider
+  emailVerified Boolean @default(false) @map("email_verified")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

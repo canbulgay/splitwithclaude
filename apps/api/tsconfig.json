@@ -5,7 +5,6 @@
     "lib": ["ES2022"],
     "module": "CommonJS",
     "outDir": "./dist",
-    "rootDir": "./src",
     "moduleResolution": "node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

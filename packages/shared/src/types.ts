@@ -4,7 +4,11 @@ export interface User {
   id: string
   email: string
   name: string
+  password?: string // Optional for OAuth users
   avatarUrl?: string
+  provider: string
+  providerId?: string
+  emailVerified: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -75,6 +79,31 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
     total: number
     totalPages: number
   }
+}
+
+// Authentication types
+export interface LoginCredentials {
+  email: string
+  password: string
+}
+
+export interface RegisterData {
+  email: string
+  name: string
+  password: string
+  avatarUrl?: string
+}
+
+export interface AuthResponse {
+  user: Omit<User, 'password'>
+  token: string
+}
+
+export interface AuthTokenPayload {
+  userId: string
+  email: string
+  iat?: number
+  exp?: number
 }
 
 // Split method types

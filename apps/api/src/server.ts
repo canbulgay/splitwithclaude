@@ -5,6 +5,7 @@ import morgan from 'morgan'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import prisma from './lib/db'
+import authRoutes from './routes/auth'
 
 // Load environment variables
 dotenv.config()
@@ -58,6 +59,9 @@ app.get('/health', async (req, res) => {
   }
 })
 
+// Authentication routes
+app.use('/api/v1/auth', authRoutes)
+
 // API routes will be added here
 app.use('/api/v1', (req, res) => {
   res.status(200).json({
@@ -65,6 +69,7 @@ app.use('/api/v1', (req, res) => {
     version: '1.0.0',
     endpoints: {
       health: '/health',
+      auth: '/api/v1/auth',
       api: '/api/v1',
     },
   })
