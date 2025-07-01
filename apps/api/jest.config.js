@@ -10,7 +10,9 @@ module.exports = {
     '!src/server.ts',
   ],
   setupFilesAfterEnv: ['<rootDir>/src/__tests__/setup.ts'],
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@splitwise/shared$': '<rootDir>/src/__tests__/__mocks__/@splitwise/shared.ts',
+    '^../lib/db$': '<rootDir>/src/__tests__/__mocks__/prisma.ts',
+    '^../../lib/db$': '<rootDir>/src/__tests__/__mocks__/prisma.ts',
   },
 };

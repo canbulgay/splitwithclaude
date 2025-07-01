@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import prisma from './lib/db'
 import authRoutes from './routes/auth'
+import groupRoutes from './routes/groups'
 
 // Load environment variables
 dotenv.config()
@@ -61,6 +62,9 @@ app.get('/health', async (req, res) => {
 
 // Authentication routes
 app.use('/api/v1/auth', authRoutes)
+
+// Group routes
+app.use('/api/v1/groups', groupRoutes)
 
 // API routes will be added here
 app.use('/api/v1', (req, res) => {

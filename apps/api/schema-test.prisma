@@ -1,0 +1,123 @@
+// Test schema with SQLite for faster testing
+generator client {
+  provider = "prisma-client-js"
+  output   = "./node_modules/.prisma/client-test"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./test.db"
+}
+
+// User model - core user information
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String?  // Optional for OAuth users
+  avatarUrl String?  
+  provider  String   @default("credentials") // "credentials", "google", "github", etc.
+  providerId String? 
+  emailVerified Boolean @default(false) 
+  createdAt DateTime @default(now()) 
+  updatedAt DateTime @updatedAt 
+
+  // Relationships
+  createdGroups  Group[]         @relation("GroupCreator")
+  groupMembers   GroupMember[]
+  expensesPaid   Expense[]       @relation("ExpensePaidBy")
+  expenseSplits  ExpenseSplit[]
+  settlementsFrom Settlement[]   @relation("SettlementFrom")
+  settlementsTo   Settlement[]   @relation("SettlementTo")
+}
+
+// Group model - expense sharing groups
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdBy   String   
+  createdAt   DateTime @default(now()) 
+  updatedAt   DateTime @updatedAt 
+
+  // Relationships
+  creator     User          @relation("GroupCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  members     GroupMember[]
+  expenses    Expense[]
+}
+
+// Group membership model
+model GroupMember {
+  groupId   String   
+  userId    String   
+  role      Role     @default(MEMBER)
+  joinedAt  DateTime @default(now()) 
+
+  // Relationships
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+}
+
+// Expense model
+model Expense {
+  id          String   @id @default(cuid())
+  groupId     String   
+  amount      Decimal  
+  description String
+  paidBy      String   
+  createdAt   DateTime @default(now()) 
+  updatedAt   DateTime @updatedAt 
+
+  // Relationships
+  group       Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payer       User           @relation("ExpensePaidBy", fields: [paidBy], references: [id], onDelete: Cascade)
+  splits      ExpenseSplit[]
+  settlements SettlementExpense[]
+}
+
+// Expense split model
+model ExpenseSplit {
+  expenseId   String  
+  userId      String  
+  amountOwed  Decimal 
+
+  // Relationships
+  expense     Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([expenseId, userId])
+}
+
+// Settlement model
+model Settlement {
+  id        String   @id @default(cuid())
+  fromUser  String   
+  toUser    String   
+  amount    Decimal  
+  settledAt DateTime @default(now()) 
+
+  // Relationships
+  fromUserRel   User                @relation("SettlementFrom", fields: [fromUser], references: [id], onDelete: Cascade)
+  toUserRel     User                @relation("SettlementTo", fields: [toUser], references: [id], onDelete: Cascade)
+  expenses      SettlementExpense[]
+}
+
+// Junction table for settlements and related expenses
+model SettlementExpense {
+  settlementId String 
+  expenseId    String 
+
+  // Relationships
+  settlement   Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  expense      Expense    @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+
+  @@id([settlementId, expenseId])
+}
+
+// Enums
+enum Role {
+  ADMIN
+  MEMBER
+}

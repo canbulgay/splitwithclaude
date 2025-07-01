@@ -25,6 +25,17 @@ export const registerSchema = z.object({
   avatarUrl: z.string().url().optional(),
 })
 
+export const createGroupSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+})
+
+// Mock enums
+export enum Role {
+  ADMIN = 'ADMIN',
+  MEMBER = 'MEMBER'
+}
+
 // Mock types
 export interface LoginCredentials {
   email: string

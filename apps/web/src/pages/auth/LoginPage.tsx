@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 import { LoginCredentials, loginSchema } from "@splitwise/shared";
 
@@ -22,6 +22,8 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams[0]?.get("redirect") || "/dashboard";
 
   const {
     register,
@@ -36,7 +38,7 @@ export function LoginPage() {
     setIsLoading(true);
     try {
       await login(data);
-      navigate("/dashboard");
+      navigate(redirectTo, { replace: true });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Login failed";

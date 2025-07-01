@@ -40,8 +40,8 @@ This plan tracks the implementation progress of the Splitwise MVP, an expense sp
 
 ### Phase 5: Group Management Core
 
-- [ ] 21. Create group creation API endpoints with validation
-- [ ] 22. Implement group listing and detail views
+- [ ] 21. Create group creation API endpoints with validation use TDD principles
+- [ ] 22. Implement group listing and detail views, be careful with Tailwind CSS Rules and dont forget the use generic ui components
 - [ ] 23. Add group member invitation and management system
 - [ ] 24. Create group settings and permissions system
 - [ ] 25. Implement group deletion and archival functionality

@@ -1,48 +1,72 @@
-import { Plus, Users, Receipt, CreditCard, TrendingUp } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
-import { Layout } from '../components/layout'
-import { Button } from '../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card'
+import { Plus, Users, Receipt, CreditCard, TrendingUp } from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { Layout } from "../components/layout";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 
 export function DashboardPage() {
-  const { user } = useAuth()
+  const { user } = useAuth();
 
   const stats = [
     {
-      title: 'Total Groups',
-      value: '3',
-      description: 'Active groups',
+      title: "Total Groups",
+      value: "3",
+      description: "Active groups",
       icon: Users,
-      color: 'text-blue-600'
+      color: "text-blue-600",
     },
     {
-      title: 'This Month',
-      value: '$1,247.50',
-      description: 'Total expenses',
+      title: "This Month",
+      value: "$1,247.50",
+      description: "Total expenses",
       icon: Receipt,
-      color: 'text-green-600'
+      color: "text-green-600",
     },
     {
-      title: 'You Owe',
-      value: '$234.75',
-      description: 'Outstanding balance',
+      title: "You Owe",
+      value: "$234.75",
+      description: "Outstanding balance",
       icon: CreditCard,
-      color: 'text-red-600'
+      color: "text-red-600",
     },
     {
-      title: 'You Are Owed',
-      value: '$87.25',
-      description: 'Money to collect',
+      title: "You Are Owed",
+      value: "$87.25",
+      description: "Money to collect",
       icon: TrendingUp,
-      color: 'text-emerald-600'
-    }
-  ]
+      color: "text-emerald-600",
+    },
+  ];
 
   const recentExpenses = [
-    { id: 1, description: 'Dinner at Mario\'s', amount: '$45.50', group: 'Friends', date: '2 hours ago' },
-    { id: 2, description: 'Grocery shopping', amount: '$127.30', group: 'Roommates', date: '1 day ago' },
-    { id: 3, description: 'Movie tickets', amount: '$28.00', group: 'Friends', date: '3 days ago' },
-  ]
+    {
+      id: 1,
+      description: "Dinner at Mario's",
+      amount: "$45.50",
+      group: "Friends",
+      date: "2 hours ago",
+    },
+    {
+      id: 2,
+      description: "Grocery shopping",
+      amount: "$127.30",
+      group: "Roommates",
+      date: "1 day ago",
+    },
+    {
+      id: 3,
+      description: "Movie tickets",
+      amount: "$28.00",
+      group: "Friends",
+      date: "3 days ago",
+    },
+  ];
 
   return (
     <Layout>
@@ -64,7 +88,7 @@ export function DashboardPage() {
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => {
-            const Icon = stat.icon
+            const Icon = stat.icon;
             return (
               <Card key={stat.title}>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -80,7 +104,7 @@ export function DashboardPage() {
                   </p>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
 
@@ -90,14 +114,15 @@ export function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Expenses</CardTitle>
-              <CardDescription>
-                Your latest expense activity
-              </CardDescription>
+              <CardDescription>Your latest expense activity</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {recentExpenses.map((expense) => (
-                  <div key={expense.id} className="flex items-center justify-between">
+                  <div
+                    key={expense.id}
+                    className="flex items-center justify-between"
+                  >
                     <div className="space-y-1">
                       <p className="text-sm font-medium leading-none">
                         {expense.description}
@@ -125,6 +150,7 @@ export function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              {/* TODO: Add functionality to these buttons */}
               <Button variant="outline" className="w-full justify-start gap-2">
                 <Plus className="h-4 w-4" />
                 Create New Group
@@ -160,7 +186,9 @@ export function DashboardPage() {
                 <p className="text-sm text-muted-foreground">Net Balance</p>
               </div>
               <div className="text-center p-4 border rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">$1,247.50</div>
+                <div className="text-2xl font-bold text-blue-600">
+                  $1,247.50
+                </div>
                 <p className="text-sm text-muted-foreground">Total Spent</p>
               </div>
               <div className="text-center p-4 border rounded-lg">
@@ -172,5 +200,5 @@ export function DashboardPage() {
         </Card>
       </div>
     </Layout>
-  )
+  );
 }
