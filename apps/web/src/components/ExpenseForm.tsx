@@ -23,6 +23,13 @@ import {
 } from "./ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { expenseApi } from "@/lib/api/expenses";
+import {
+  EqualSplitCalculator,
+  PercentageSplitCalculator,
+  SplitValidator,
+  type SplitParticipant,
+  type SplitResult,
+} from "@/lib/splitting";
 
 // Types for group and user data
 interface User {
@@ -109,49 +116,80 @@ export function ExpenseForm({
   const watchedAmount = watch("amount");
   const watchedSplits = watch("splits");
 
-  // Calculate equal splits when amount or split method changes
+  // Calculate splits using enhanced algorithms
   useEffect(() => {
-    if (splitMethod === "equal" && watchedAmount > 0) {
-      const equalAmount = Number((watchedAmount / group.members.length).toFixed(2));
-      const remainder = Number((watchedAmount - (equalAmount * group.members.length)).toFixed(2));
+    if (watchedAmount <= 0) return;
 
-      group.members.forEach((member, index) => {
-        const amount = index === 0 ? equalAmount + remainder : equalAmount;
+    try {
+      const participants: SplitParticipant[] = group.members.map(member => ({
+        userId: member.userId,
+        name: member.user.name,
+      }));
+
+      let results: SplitResult[] = [];
+
+      if (splitMethod === "equal") {
+        results = EqualSplitCalculator.calculate(watchedAmount, participants);
+      } else if (splitMethod === "percentage") {
+        // For initial load, distribute equally
+        const equalPercentage = Number((100 / group.members.length).toFixed(2));
+        const percentages = participants.map((p, index) => {
+          // Adjust last percentage for rounding
+          const isLast = index === participants.length - 1;
+          const adjustedPercentage = isLast 
+            ? Number((100 - (equalPercentage * (participants.length - 1))).toFixed(2))
+            : equalPercentage;
+          
+          return {
+            userId: p.userId,
+            percentage: adjustedPercentage,
+          };
+        });
+        
+        results = PercentageSplitCalculator.calculate(watchedAmount, percentages);
+      } else {
+        // For exact amounts, don't auto-calculate - let user input
+        return;
+      }
+
+      // Update form with calculated results
+      results.forEach((result, index) => {
         update(index, {
-          userId: member.userId,
-          amount,
-          percentage: Number(((amount / watchedAmount) * 100).toFixed(2)),
+          userId: result.userId,
+          amount: result.amount,
+          percentage: result.percentage,
         });
       });
-    } else if (splitMethod === "percentage") {
-      const equalPercentage = Number((100 / group.members.length).toFixed(2));
-      const remainder = Number((100 - (equalPercentage * group.members.length)).toFixed(2));
-
-      group.members.forEach((member, index) => {
-        const percentage = index === 0 ? equalPercentage + remainder : equalPercentage;
-        const amount = Number(((percentage / 100) * watchedAmount).toFixed(2));
-        update(index, {
-          userId: member.userId,
-          amount,
-          percentage,
-        });
-      });
+    } catch (error) {
+      console.error('Error calculating splits:', error);
     }
   }, [watchedAmount, splitMethod, group.members, update]);
 
-  // Validate splits when they change
+  // Enhanced validation using SplitValidator
   useEffect(() => {
     if (watchedAmount > 0 && watchedSplits.length > 0) {
-      const totalSplitAmount = watchedSplits.reduce((sum, split) => sum + (split.amount || 0), 0);
-      const difference = Math.abs(totalSplitAmount - watchedAmount);
+      try {
+        const splitResults: SplitResult[] = watchedSplits.map(split => ({
+          userId: split.userId,
+          amount: split.amount || 0,
+          percentage: split.percentage || 0,
+        }));
 
-      if (difference > 0.01) {
+        const validation = SplitValidator.validateSplit(watchedAmount, splitResults);
+        
+        if (!validation.isValid) {
+          setError("splits", {
+            type: "manual",
+            message: validation.errors[0] || "Invalid split configuration",
+          });
+        } else {
+          clearErrors("splits");
+        }
+      } catch (error) {
         setError("splits", {
           type: "manual",
-          message: `Split amounts must equal the total expense amount. Current difference: $${difference.toFixed(2)}`,
+          message: "Error validating splits",
         });
-      } else {
-        clearErrors("splits");
       }
     }
   }, [watchedSplits, watchedAmount, setError, clearErrors]);
@@ -159,25 +197,47 @@ export function ExpenseForm({
   const handleSplitMethodChange = (method: "equal" | "exact" | "percentage") => {
     setSplitMethod(method);
     setValue("splitMethod", method);
+    
+    // Clear any existing split errors when changing methods
+    clearErrors("splits");
+    
+    // For exact method, reset to zero amounts to let user input
+    if (method === "exact" && watchedAmount > 0) {
+      group.members.forEach((member, index) => {
+        update(index, {
+          userId: member.userId,
+          amount: 0,
+          percentage: 0,
+        });
+      });
+    }
   };
 
   const handleSplitChange = (index: number, field: "amount" | "percentage", value: number) => {
     const currentSplit = watchedSplits[index];
     
-    if (field === "amount") {
-      const percentage = watchedAmount > 0 ? Number(((value / watchedAmount) * 100).toFixed(2)) : 0;
-      update(index, {
-        ...currentSplit,
-        amount: value,
-        percentage,
-      });
-    } else if (field === "percentage") {
-      const amount = Number(((value / 100) * watchedAmount).toFixed(2));
-      update(index, {
-        ...currentSplit,
-        amount,
-        percentage: value,
-      });
+    try {
+      if (field === "amount") {
+        const percentage = watchedAmount > 0 ? Number(((value / watchedAmount) * 100).toFixed(2)) : 0;
+        update(index, {
+          ...currentSplit,
+          amount: Number(value.toFixed(2)),
+          percentage: Number(percentage.toFixed(2)),
+        });
+      } else if (field === "percentage") {
+        if (value < 0 || value > 100) {
+          // Don't update invalid percentages
+          return;
+        }
+        const amount = Number(((value / 100) * watchedAmount).toFixed(2));
+        update(index, {
+          ...currentSplit,
+          amount: Number(amount.toFixed(2)),
+          percentage: Number(value.toFixed(2)),
+        });
+      }
+    } catch (error) {
+      console.error('Error updating split:', error);
     }
   };
 
