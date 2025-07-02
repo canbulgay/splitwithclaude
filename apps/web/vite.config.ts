@@ -32,12 +32,20 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
+          // Core React chunks
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
           query: ['@tanstack/react-query'],
+          // UI library chunks
+          ui: ['lucide-react', '@radix-ui/react-slot', '@radix-ui/react-dropdown-menu', '@radix-ui/react-separator'],
+          charts: ['recharts'],
+          utils: ['date-fns', 'clsx', 'tailwind-merge'],
+          // App-specific chunks - use module IDs that actually exist
+          auth: ['./src/contexts/AuthContext'],
         },
       },
     },
+    chunkSizeWarningLimit: 1000,
   },
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version),

@@ -14,11 +14,14 @@ import { ExpenseList } from "../components/ExpenseList";
 import { expenseApi, type Expense } from "@/api/expenses";
 import { groupApi, type Group } from "@/api/groups";
 import { balancesApi, type UserBalanceSummary } from "@/api/balances";
-import { ExpenseChart } from "../components/charts/ExpenseChart";
-import { ActivityFeed } from "../components/dashboard/ActivityFeed";
-import { StatsCard } from "../components/dashboard/StatsCard";
-import { GroupOverview } from "../components/dashboard/GroupOverview";
+import { lazy, Suspense } from "react";
 import { BalanceSummary } from "../components/BalanceSummary";
+
+// Lazy load dashboard components for code splitting
+const ExpenseChart = lazy(() => import("../components/charts/ExpenseChart").then(m => ({ default: m.ExpenseChart })));
+const ActivityFeed = lazy(() => import("../components/dashboard/ActivityFeed").then(m => ({ default: m.ActivityFeed })));
+const StatsCard = lazy(() => import("../components/dashboard/StatsCard").then(m => ({ default: m.StatsCard })));
+const GroupOverview = lazy(() => import("../components/dashboard/GroupOverview").then(m => ({ default: m.GroupOverview })));
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -158,16 +161,18 @@ export function DashboardPage() {
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <StatsCard
-              key={stat.title}
-              title={stat.title}
-              value={stat.value}
-              description={stat.description}
-              icon={stat.icon}
-              color={stat.color}
-            />
-          ))}
+          <Suspense fallback={<div className="h-24 bg-gray-100 animate-pulse rounded-lg"></div>}>
+            {stats.map((stat) => (
+              <StatsCard
+                key={stat.title}
+                title={stat.title}
+                value={stat.value}
+                description={stat.description}
+                icon={stat.icon}
+                color={stat.color}
+              />
+            ))}
+          </Suspense>
         </div>
 
         {/* Main Dashboard Grid */}
@@ -175,24 +180,28 @@ export function DashboardPage() {
           {/* Left Column - Groups and Activity */}
           <div className="lg:col-span-2 space-y-6">
             {/* Group Overview */}
-            <GroupOverview
-              groups={groups.map(group => ({
-                id: group.id,
-                name: group.name,
-                description: group.description,
-                memberCount: group.members?.length || 0,
-                totalExpenses: recentExpenses
-                  .filter(expense => expense.groupId === group.id)
-                  .reduce((sum, expense) => sum + expense.amount, 0),
-                yourBalance: 0, // This would come from balance calculations
-                lastActivity: new Date()
-              }))}
-              onCreateGroup={() => console.log('Create group')}
-              onViewGroup={(groupId) => console.log('View group:', groupId)}
-            />
+            <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>}>
+              <GroupOverview
+                groups={groups.map(group => ({
+                  id: group.id,
+                  name: group.name,
+                  description: group.description,
+                  memberCount: group.members?.length || 0,
+                  totalExpenses: recentExpenses
+                    .filter(expense => expense.groupId === group.id)
+                    .reduce((sum, expense) => sum + expense.amount, 0),
+                  yourBalance: 0, // This would come from balance calculations
+                  lastActivity: new Date()
+                }))}
+                onCreateGroup={() => console.log('Create group')}
+                onViewGroup={(groupId) => console.log('View group:', groupId)}
+              />
+            </Suspense>
 
             {/* Activity Feed */}
-            <ActivityFeed activities={activityData} maxItems={8} />
+            <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>}>
+              <ActivityFeed activities={activityData} maxItems={8} />
+            </Suspense>
           </div>
 
           {/* Right Column - Charts and Balance */}
@@ -204,12 +213,14 @@ export function DashboardPage() {
 
             {/* Expense Categories Chart */}
             {chartData.length > 0 && (
-              <ExpenseChart
-                data={chartData}
-                type="pie"
-                title="Expenses by Category"
-                height={250}
-              />
+              <Suspense fallback={<div className="h-64 bg-gray-100 animate-pulse rounded-lg"></div>}>
+                <ExpenseChart
+                  data={chartData}
+                  type="pie"
+                  title="Expenses by Category"
+                  height={250}
+                />
+              </Suspense>
             )}
 
             {/* Quick Actions */}
