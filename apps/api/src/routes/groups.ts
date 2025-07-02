@@ -11,6 +11,7 @@ import { z } from "zod";
 import { Role } from "@prisma/client";
 import { ExpenseCategory } from "@splitwise/shared";
 import { ExpenseModel } from "../models/Expense";
+import { log } from "console";
 
 const router: Router = Router();
 
@@ -485,6 +486,12 @@ router.get(
         groupId,
         filters
       );
+
+      log("Fetched group expenses:", {
+        groupId,
+        filters,
+        totalExpenses: result.expenses.length,
+      });
 
       res.json({
         success: true,
