@@ -34,6 +34,7 @@ export interface Expense {
   groupId: string
   amount: number
   description: string
+  category: ExpenseCategory
   paidBy: string
   createdAt: Date
   updatedAt: Date
@@ -62,6 +63,19 @@ export interface SettlementExpense {
 export enum Role {
   ADMIN = 'ADMIN',
   MEMBER = 'MEMBER',
+}
+
+export enum ExpenseCategory {
+  GENERAL = 'GENERAL',
+  FOOD = 'FOOD',
+  TRANSPORTATION = 'TRANSPORTATION',
+  ENTERTAINMENT = 'ENTERTAINMENT',
+  UTILITIES = 'UTILITIES',
+  SHOPPING = 'SHOPPING',
+  HEALTHCARE = 'HEALTHCARE',
+  TRAVEL = 'TRAVEL',
+  EDUCATION = 'EDUCATION',
+  OTHER = 'OTHER',
 }
 
 // API Response types

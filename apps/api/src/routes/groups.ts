@@ -6,9 +6,10 @@ import {
   validateRequest,
 } from "../middleware/auth";
 import { GroupModel } from "../models/Group";
-import { createGroupSchema } from "@splitwise/shared";
+import { createGroupSchema, expenseFilterSchema } from "@splitwise/shared";
 import { z } from "zod";
-import { Role } from "@prisma/client";
+import { Role, ExpenseCategory } from "@prisma/client";
+import { ExpenseModel } from "../models/Expense";
 
 const router: Router = Router();
 
@@ -427,7 +428,7 @@ router.delete(
 
 /**
  * GET /groups/:groupId/expenses
- * Get group expenses with splits
+ * Get group expenses with pagination and filtering
  */
 router.get(
   "/:groupId/expenses",
@@ -436,9 +437,34 @@ router.get(
   async (req, res) => {
     try {
       const { groupId } = req.params;
+      
+      // Parse and validate query parameters
+      const queryValidation = expenseFilterSchema.safeParse({
+        page: req.query.page ? parseInt(req.query.page as string) : undefined,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        category: req.query.category as ExpenseCategory,
+        paidBy: req.query.paidBy as string,
+        minAmount: req.query.minAmount ? parseFloat(req.query.minAmount as string) : undefined,
+        maxAmount: req.query.maxAmount ? parseFloat(req.query.maxAmount as string) : undefined,
+        startDate: req.query.startDate as string,
+        endDate: req.query.endDate as string,
+        sortBy: req.query.sortBy as 'createdAt' | 'amount' | 'description',
+        sortOrder: req.query.sortOrder as 'asc' | 'desc',
+      });
 
-      const group = await GroupModel.findWithExpenses(groupId);
+      if (!queryValidation.success) {
+        res.status(400).json({
+          success: false,
+          error: "Invalid query parameters",
+          details: queryValidation.error.flatten().fieldErrors,
+        });
+        return;
+      }
 
+      const filters = queryValidation.data;
+
+      // Check if group exists
+      const group = await GroupModel.findById(groupId);
       if (!group) {
         res.status(404).json({
           success: false,
@@ -446,6 +472,9 @@ router.get(
         });
         return;
       }
+
+      // Get filtered and paginated expenses
+      const result = await ExpenseModel.findByGroupIdWithFilters(groupId, filters);
 
       res.json({
         success: true,
@@ -455,7 +484,7 @@ router.get(
             name: group.name,
             description: group.description,
           },
-          expenses: group.expenses.map(expense => ({
+          expenses: result.expenses.map(expense => ({
             ...expense,
             amount: Number(expense.amount),
             splits: expense.splits.map(split => ({
@@ -463,6 +492,7 @@ router.get(
               amountOwed: Number(split.amountOwed),
             })),
           })),
+          pagination: result.pagination,
         },
       });
     } catch (error) {
@@ -474,5 +504,52 @@ router.get(
     }
   }
 );
+
+/**
+ * GET /groups/:groupId/expense-categories
+ * Get available expense categories
+ */
+router.get(
+  "/:groupId/expense-categories",
+  authenticateToken,
+  requireGroupMember(),
+  async (req, res) => {
+    try {
+      const categories = Object.values(ExpenseCategory).map(category => ({
+        value: category,
+        label: category.charAt(0) + category.slice(1).toLowerCase().replace(/_/g, ' '),
+        icon: getCategoryIcon(category),
+      }));
+
+      res.json({
+        success: true,
+        data: categories,
+      });
+    } catch (error) {
+      console.error("Error fetching expense categories:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch expense categories",
+      });
+    }
+  }
+);
+
+// Helper function to get category icons
+function getCategoryIcon(category: ExpenseCategory): string {
+  const iconMap: Record<ExpenseCategory, string> = {
+    [ExpenseCategory.GENERAL]: "📄",
+    [ExpenseCategory.FOOD]: "🍽️",
+    [ExpenseCategory.TRANSPORTATION]: "🚗",
+    [ExpenseCategory.ENTERTAINMENT]: "🎬",
+    [ExpenseCategory.UTILITIES]: "⚡",
+    [ExpenseCategory.SHOPPING]: "🛍️",
+    [ExpenseCategory.HEALTHCARE]: "🏥",
+    [ExpenseCategory.TRAVEL]: "✈️",
+    [ExpenseCategory.EDUCATION]: "📚",
+    [ExpenseCategory.OTHER]: "📦",
+  };
+  return iconMap[category] || "📄";
+}
 
 export default router;

@@ -9,6 +9,7 @@ import authRoutes from './routes/auth'
 import groupRoutes from './routes/groups'
 import expenseRoutes from './routes/expenses'
 import balanceRoutes from './routes/balances'
+import settlementRoutes from './routes/settlements'
 
 // Load environment variables
 dotenv.config()
@@ -73,6 +74,9 @@ app.use('/api/v1/expenses', expenseRoutes)
 
 // Balance routes
 app.use('/api/v1/balances', balanceRoutes)
+
+// Settlement routes
+app.use('/api/v1/settlements', settlementRoutes)
 
 // API routes will be added here
 app.use('/api/v1', (req, res) => {

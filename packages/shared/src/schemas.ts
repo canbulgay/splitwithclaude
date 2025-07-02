@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Role } from './types'
+import { Role, ExpenseCategory } from './types'
 
 // User schemas
 export const userSchema = z.object({
@@ -83,6 +83,7 @@ export const expenseSchema = z.object({
   groupId: z.string().cuid(),
   amount: z.number().positive().multipleOf(0.01),
   description: z.string().min(1).max(200),
+  category: z.nativeEnum(ExpenseCategory).default(ExpenseCategory.GENERAL),
   paidBy: z.string().cuid(),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -98,6 +99,7 @@ export const createExpenseSchema = z.object({
   groupId: z.string().cuid(),
   amount: z.number().positive().multipleOf(0.01),
   description: z.string().min(1).max(200),
+  category: z.nativeEnum(ExpenseCategory).optional().default(ExpenseCategory.GENERAL),
   paidBy: z.string().cuid(),
   splits: z.array(z.object({
     userId: z.string().cuid(),
@@ -149,4 +151,18 @@ export const paginationSchema = z.object({
   limit: z.number().int().positive().max(100),
   total: z.number().int().nonnegative(),
   totalPages: z.number().int().nonnegative(),
+})
+
+// Expense filtering and pagination schemas
+export const expenseFilterSchema = z.object({
+  page: z.number().int().positive().optional().default(1),
+  limit: z.number().int().positive().max(100).optional().default(20),
+  category: z.nativeEnum(ExpenseCategory).optional(),
+  paidBy: z.string().cuid().optional(),
+  minAmount: z.number().positive().multipleOf(0.01).optional(),
+  maxAmount: z.number().positive().multipleOf(0.01).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  sortBy: z.enum(['createdAt', 'amount', 'description']).optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
 })

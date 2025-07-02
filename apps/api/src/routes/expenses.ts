@@ -2,7 +2,7 @@ import { Router } from "express";
 import { authenticateToken, validateRequest } from "../middleware/auth";
 import { ExpenseModel } from "../models/Expense";
 import { GroupModel } from "../models/Group";
-import { createExpenseSchema } from "@splitwise/shared";
+import { createExpenseSchema, expenseFilterSchema } from "@splitwise/shared";
 import { z } from "zod";
 
 const router: Router = Router();
@@ -11,6 +11,7 @@ const router: Router = Router();
 const updateExpenseSchema = z.object({
   amount: z.number().positive().multipleOf(0.01).optional(),
   description: z.string().min(1).max(200).optional(),
+  category: z.enum(["GENERAL", "FOOD", "TRANSPORTATION", "ENTERTAINMENT", "UTILITIES", "SHOPPING", "HEALTHCARE", "TRAVEL", "EDUCATION", "OTHER"]).optional(),
   paidBy: z.string().cuid().optional(),
   splits: z
     .array(
@@ -91,7 +92,7 @@ router.post(
         return;
       }
 
-      const { groupId, amount, description, paidBy, splits } = req.body;
+      const { groupId, amount, description, category, paidBy, splits } = req.body;
 
       // Check if user is a member of the group
       const isMember = await GroupModel.isMember(groupId, req.user.id);
@@ -148,6 +149,7 @@ router.post(
           group: { connect: { id: groupId } },
           amount,
           description,
+          category: category || 'GENERAL',
           payer: { connect: { id: paidBy } },
         },
         splits.map((split: { userId: string; amount: number }) => ({
@@ -279,6 +281,9 @@ router.put(
         if (expenseOnlyData.description !== undefined) {
           prismaUpdateData.description = expenseOnlyData.description;
         }
+        if (expenseOnlyData.category !== undefined) {
+          prismaUpdateData.category = expenseOnlyData.category;
+        }
         if (expenseOnlyData.paidBy !== undefined) {
           prismaUpdateData.payer = { connect: { id: expenseOnlyData.paidBy } };
         }
@@ -300,6 +305,9 @@ router.put(
         }
         if (updateData.description !== undefined) {
           prismaUpdateData.description = updateData.description;
+        }
+        if (updateData.category !== undefined) {
+          prismaUpdateData.category = updateData.category;
         }
         if (updateData.paidBy !== undefined) {
           prismaUpdateData.payer = { connect: { id: updateData.paidBy } };

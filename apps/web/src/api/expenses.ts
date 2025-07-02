@@ -1,9 +1,11 @@
 import apiClient from ".";
+import { ExpenseCategory } from "@splitwise/shared";
 
 export interface CreateExpenseRequest {
   groupId: string;
   amount: number;
   description: string;
+  category: ExpenseCategory;
   paidBy: string;
   splits: Array<{
     userId: string;
@@ -14,6 +16,7 @@ export interface CreateExpenseRequest {
 export interface UpdateExpenseRequest {
   amount?: number;
   description?: string;
+  category?: ExpenseCategory;
   paidBy?: string;
   splits?: Array<{
     userId: string;
@@ -26,6 +29,7 @@ export interface Expense {
   groupId: string;
   amount: number;
   description: string;
+  category: ExpenseCategory;
   paidBy: string;
   createdAt: string;
   updatedAt: string;

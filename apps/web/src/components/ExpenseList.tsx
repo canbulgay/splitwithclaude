@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { MoreHorizontal, Edit, Trash2, User, DollarSign } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, User, DollarSign, Tag } from "lucide-react";
+import { ExpenseCategory } from "@splitwise/shared";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import {
@@ -102,6 +103,10 @@ export function ExpenseList({
                       <h3 className="font-semibold text-lg">
                         {expense.description}
                       </h3>
+                      <Badge variant="outline" className="text-xs">
+                        <span className="mr-1">{getCategoryIcon(expense.category)}</span>
+                        {getCategoryLabel(expense.category)}
+                      </Badge>
                       {showGroupName && (
                         <Badge variant="secondary" className="text-xs">
                           {expense?.group?.name}
@@ -218,4 +223,37 @@ export function ExpenseList({
         })}
     </div>
   );
+}
+
+// Helper functions for expense categories
+function getCategoryIcon(category: ExpenseCategory): string {
+  const iconMap: Record<ExpenseCategory, string> = {
+    [ExpenseCategory.GENERAL]: "📄",
+    [ExpenseCategory.FOOD]: "🍽️",
+    [ExpenseCategory.TRANSPORTATION]: "🚗",
+    [ExpenseCategory.ENTERTAINMENT]: "🎬",
+    [ExpenseCategory.UTILITIES]: "⚡",
+    [ExpenseCategory.SHOPPING]: "🛍️",
+    [ExpenseCategory.HEALTHCARE]: "🏥",
+    [ExpenseCategory.TRAVEL]: "✈️",
+    [ExpenseCategory.EDUCATION]: "📚",
+    [ExpenseCategory.OTHER]: "📦",
+  };
+  return iconMap[category] || "📄";
+}
+
+function getCategoryLabel(category: ExpenseCategory): string {
+  const labelMap: Record<ExpenseCategory, string> = {
+    [ExpenseCategory.GENERAL]: "General",
+    [ExpenseCategory.FOOD]: "Food & Dining",
+    [ExpenseCategory.TRANSPORTATION]: "Transportation",
+    [ExpenseCategory.ENTERTAINMENT]: "Entertainment",
+    [ExpenseCategory.UTILITIES]: "Utilities",
+    [ExpenseCategory.SHOPPING]: "Shopping",
+    [ExpenseCategory.HEALTHCARE]: "Healthcare",
+    [ExpenseCategory.TRAVEL]: "Travel",
+    [ExpenseCategory.EDUCATION]: "Education",
+    [ExpenseCategory.OTHER]: "Other",
+  };
+  return labelMap[category] || "General";
 }

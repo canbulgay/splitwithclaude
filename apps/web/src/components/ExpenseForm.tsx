@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Calculator, DollarSign, Users } from "lucide-react";
+import { Plus, Calculator, DollarSign, Users, Tag } from "lucide-react";
+import { ExpenseCategory } from "@splitwise/shared";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -59,6 +60,7 @@ const expenseFormSchema = z.object({
     .number()
     .positive("Amount must be positive")
     .multipleOf(0.01, "Amount must have at most 2 decimal places"),
+  category: z.nativeEnum(ExpenseCategory).default(ExpenseCategory.GENERAL),
   paidBy: z.string().cuid("Please select who paid"),
   splitMethod: z.enum(["equal", "exact", "percentage"]),
   splits: z.array(
@@ -106,6 +108,7 @@ export function ExpenseForm({
     defaultValues: {
       description: initialData?.description || "",
       amount: initialData?.amount || 0,
+      category: initialData?.category || ExpenseCategory.GENERAL,
       paidBy: initialData?.paidBy || "",
       splitMethod: initialData?.splitMethod || "equal",
       splits:
@@ -301,6 +304,33 @@ export function ExpenseForm({
           {errors.description && (
             <p className="text-sm text-destructive mt-1">
               {errors.description.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Label htmlFor="category">Category</Label>
+          <Select
+            value={watch("category")}
+            onValueChange={(value: ExpenseCategory) => setValue("category", value)}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select expense category" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.values(ExpenseCategory).map((category) => (
+                <SelectItem key={category} value={category}>
+                  <div className="flex items-center gap-2">
+                    <span>{getCategoryIcon(category)}</span>
+                    <span>{getCategoryLabel(category)}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.category && (
+            <p className="text-sm text-destructive mt-1">
+              {errors.category.message}
             </p>
           )}
         </div>
@@ -529,6 +559,7 @@ export function CreateExpenseDialog({
         groupId: group.id,
         amount: data.amount,
         description: data.description,
+        category: data.category,
         paidBy: data.paidBy,
         splits: data.splits.map((split) => ({
           userId: split.userId,
@@ -573,4 +604,37 @@ export function CreateExpenseDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+// Helper functions for expense categories
+function getCategoryIcon(category: ExpenseCategory): string {
+  const iconMap: Record<ExpenseCategory, string> = {
+    [ExpenseCategory.GENERAL]: "📄",
+    [ExpenseCategory.FOOD]: "🍽️",
+    [ExpenseCategory.TRANSPORTATION]: "🚗",
+    [ExpenseCategory.ENTERTAINMENT]: "🎬",
+    [ExpenseCategory.UTILITIES]: "⚡",
+    [ExpenseCategory.SHOPPING]: "🛍️",
+    [ExpenseCategory.HEALTHCARE]: "🏥",
+    [ExpenseCategory.TRAVEL]: "✈️",
+    [ExpenseCategory.EDUCATION]: "📚",
+    [ExpenseCategory.OTHER]: "📦",
+  };
+  return iconMap[category] || "📄";
+}
+
+function getCategoryLabel(category: ExpenseCategory): string {
+  const labelMap: Record<ExpenseCategory, string> = {
+    [ExpenseCategory.GENERAL]: "General",
+    [ExpenseCategory.FOOD]: "Food & Dining",
+    [ExpenseCategory.TRANSPORTATION]: "Transportation",
+    [ExpenseCategory.ENTERTAINMENT]: "Entertainment",
+    [ExpenseCategory.UTILITIES]: "Utilities",
+    [ExpenseCategory.SHOPPING]: "Shopping",
+    [ExpenseCategory.HEALTHCARE]: "Healthcare",
+    [ExpenseCategory.TRAVEL]: "Travel",
+    [ExpenseCategory.EDUCATION]: "Education",
+    [ExpenseCategory.OTHER]: "Other",
+  };
+  return labelMap[category] || "General";
 }

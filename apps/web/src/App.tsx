@@ -12,6 +12,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { GroupsPage } from "./pages/group/GroupsPage";
 import { GroupDetailPage } from "./pages/group/GroupDetailPage";
 import { GroupSettingsPage } from "./pages/group/GroupSettingsPage";
+import { SettlementsPage } from "./pages/SettlementsPage";
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -105,6 +106,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <GroupSettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settlements"
+        element={
+          <ProtectedRoute>
+            <SettlementsPage />
           </ProtectedRoute>
         }
       />

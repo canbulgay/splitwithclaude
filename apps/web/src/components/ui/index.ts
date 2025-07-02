@@ -47,3 +47,4 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
 } from "./dropdown-menu";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";

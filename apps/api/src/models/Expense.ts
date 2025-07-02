@@ -1,4 +1,4 @@
-import { Expense as PrismaExpense, Prisma } from '@prisma/client'
+import { Expense as PrismaExpense, Prisma, ExpenseCategory } from '@prisma/client'
 import prisma from '../lib/db'
 
 interface ExpenseSplitInput {
@@ -137,6 +137,101 @@ export class ExpenseModel {
       take: options?.take,
       orderBy: options?.orderBy || { createdAt: 'desc' },
     })
+  }
+
+  /**
+   * Get expenses for a group with filtering and pagination
+   */
+  static async findByGroupIdWithFilters(
+    groupId: string,
+    filters: {
+      page?: number
+      limit?: number
+      category?: ExpenseCategory
+      paidBy?: string
+      minAmount?: number
+      maxAmount?: number
+      startDate?: string
+      endDate?: string
+      sortBy?: 'createdAt' | 'amount' | 'description'
+      sortOrder?: 'asc' | 'desc'
+    }
+  ) {
+    const {
+      page = 1,
+      limit = 20,
+      category,
+      paidBy,
+      minAmount,
+      maxAmount,
+      startDate,
+      endDate,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = filters
+
+    // Build where clause
+    const where: Prisma.ExpenseWhereInput = {
+      groupId,
+      ...(category && { category }),
+      ...(paidBy && { paidBy }),
+      ...(minAmount && { amount: { gte: minAmount } }),
+      ...(maxAmount && { 
+        amount: minAmount 
+          ? { gte: minAmount, lte: maxAmount }
+          : { lte: maxAmount }
+      }),
+      ...(startDate && { 
+        createdAt: { 
+          gte: new Date(startDate),
+          ...(endDate && { lte: new Date(endDate) })
+        }
+      }),
+      ...(endDate && !startDate && { 
+        createdAt: { lte: new Date(endDate) }
+      }),
+    }
+
+    // Build order by clause
+    const orderBy: Prisma.ExpenseOrderByWithRelationInput = {
+      [sortBy]: sortOrder,
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit
+    
+    // Execute queries in parallel
+    const [expenses, totalCount] = await Promise.all([
+      prisma.expense.findMany({
+        where,
+        include: {
+          payer: true,
+          splits: {
+            include: {
+              user: true,
+            },
+          },
+        },
+        skip,
+        take: limit,
+        orderBy,
+      }),
+      prisma.expense.count({ where }),
+    ])
+
+    const totalPages = Math.ceil(totalCount / limit)
+
+    return {
+      expenses,
+      pagination: {
+        page,
+        limit,
+        total: totalCount,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    }
   }
 
   /**
