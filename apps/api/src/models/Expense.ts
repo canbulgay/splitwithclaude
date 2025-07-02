@@ -1,9 +1,10 @@
-import { Expense as PrismaExpense, Prisma, ExpenseCategory } from '@prisma/client'
-import prisma from '../lib/db'
+import { Expense as PrismaExpense, Prisma } from "@prisma/client";
+import { ExpenseCategory } from "@splitwise/shared";
+import prisma from "../lib/db";
 
 interface ExpenseSplitInput {
-  userId: string
-  amountOwed: number
+  userId: string;
+  amountOwed: number;
 }
 
 export class ExpenseModel {
@@ -11,26 +12,26 @@ export class ExpenseModel {
    * Create a new expense with splits
    */
   static async createWithSplits(
-    expenseData: Omit<Prisma.ExpenseCreateInput, 'splits'>,
+    expenseData: Omit<Prisma.ExpenseCreateInput, "splits">,
     splits: ExpenseSplitInput[]
   ) {
     return prisma.$transaction(async (tx) => {
       // Create the expense
       const expense = await tx.expense.create({
         data: expenseData,
-      })
+      });
 
       // Create the splits
       await tx.expenseSplit.createMany({
-        data: splits.map(split => ({
+        data: splits.map((split) => ({
           expenseId: expense.id,
           userId: split.userId,
           amountOwed: split.amountOwed,
         })),
-      })
+      });
 
-      return expense
-    })
+      return expense;
+    });
   }
 
   /**
@@ -39,7 +40,7 @@ export class ExpenseModel {
   static async findById(id: string): Promise<PrismaExpense | null> {
     return prisma.expense.findUnique({
       where: { id },
-    })
+    });
   }
 
   /**
@@ -57,17 +58,20 @@ export class ExpenseModel {
           },
         },
       },
-    })
+    });
   }
 
   /**
    * Update expense
    */
-  static async update(id: string, data: Prisma.ExpenseUpdateInput): Promise<PrismaExpense> {
+  static async update(
+    id: string,
+    data: Prisma.ExpenseUpdateInput
+  ): Promise<PrismaExpense> {
     return prisma.expense.update({
       where: { id },
       data,
-    })
+    });
   }
 
   /**
@@ -83,24 +87,24 @@ export class ExpenseModel {
       const expense = await tx.expense.update({
         where: { id },
         data: expenseData,
-      })
+      });
 
       // Delete existing splits
       await tx.expenseSplit.deleteMany({
         where: { expenseId: id },
-      })
+      });
 
       // Create new splits
       await tx.expenseSplit.createMany({
-        data: splits.map(split => ({
+        data: splits.map((split) => ({
           expenseId: id,
           userId: split.userId,
           amountOwed: split.amountOwed,
         })),
-      })
+      });
 
-      return expense
-    })
+      return expense;
+    });
   }
 
   /**
@@ -109,7 +113,7 @@ export class ExpenseModel {
   static async delete(id: string): Promise<PrismaExpense> {
     return prisma.expense.delete({
       where: { id },
-    })
+    });
   }
 
   /**
@@ -118,9 +122,9 @@ export class ExpenseModel {
   static async findByGroupId(
     groupId: string,
     options?: {
-      skip?: number
-      take?: number
-      orderBy?: Prisma.ExpenseOrderByWithRelationInput
+      skip?: number;
+      take?: number;
+      orderBy?: Prisma.ExpenseOrderByWithRelationInput;
     }
   ) {
     return prisma.expense.findMany({
@@ -135,8 +139,8 @@ export class ExpenseModel {
       },
       skip: options?.skip,
       take: options?.take,
-      orderBy: options?.orderBy || { createdAt: 'desc' },
-    })
+      orderBy: options?.orderBy || { createdAt: "desc" },
+    });
   }
 
   /**
@@ -145,16 +149,16 @@ export class ExpenseModel {
   static async findByGroupIdWithFilters(
     groupId: string,
     filters: {
-      page?: number
-      limit?: number
-      category?: ExpenseCategory
-      paidBy?: string
-      minAmount?: number
-      maxAmount?: number
-      startDate?: string
-      endDate?: string
-      sortBy?: 'createdAt' | 'amount' | 'description'
-      sortOrder?: 'asc' | 'desc'
+      page?: number;
+      limit?: number;
+      category?: ExpenseCategory;
+      paidBy?: string;
+      minAmount?: number;
+      maxAmount?: number;
+      startDate?: string;
+      endDate?: string;
+      sortBy?: "createdAt" | "amount" | "description";
+      sortOrder?: "asc" | "desc";
     }
   ) {
     const {
@@ -166,9 +170,9 @@ export class ExpenseModel {
       maxAmount,
       startDate,
       endDate,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-    } = filters
+      sortBy = "createdAt",
+      sortOrder = "desc",
+    } = filters;
 
     // Build where clause
     const where: Prisma.ExpenseWhereInput = {
@@ -176,30 +180,31 @@ export class ExpenseModel {
       ...(category && { category }),
       ...(paidBy && { paidBy }),
       ...(minAmount && { amount: { gte: minAmount } }),
-      ...(maxAmount && { 
-        amount: minAmount 
+      ...(maxAmount && {
+        amount: minAmount
           ? { gte: minAmount, lte: maxAmount }
-          : { lte: maxAmount }
+          : { lte: maxAmount },
       }),
-      ...(startDate && { 
-        createdAt: { 
+      ...(startDate && {
+        createdAt: {
           gte: new Date(startDate),
-          ...(endDate && { lte: new Date(endDate) })
-        }
+          ...(endDate && { lte: new Date(endDate) }),
+        },
       }),
-      ...(endDate && !startDate && { 
-        createdAt: { lte: new Date(endDate) }
-      }),
-    }
+      ...(endDate &&
+        !startDate && {
+          createdAt: { lte: new Date(endDate) },
+        }),
+    };
 
     // Build order by clause
     const orderBy: Prisma.ExpenseOrderByWithRelationInput = {
       [sortBy]: sortOrder,
-    }
+    };
 
     // Calculate pagination
-    const skip = (page - 1) * limit
-    
+    const skip = (page - 1) * limit;
+
     // Execute queries in parallel
     const [expenses, totalCount] = await Promise.all([
       prisma.expense.findMany({
@@ -217,9 +222,9 @@ export class ExpenseModel {
         orderBy,
       }),
       prisma.expense.count({ where }),
-    ])
+    ]);
 
-    const totalPages = Math.ceil(totalCount / limit)
+    const totalPages = Math.ceil(totalCount / limit);
 
     return {
       expenses,
@@ -231,7 +236,7 @@ export class ExpenseModel {
         hasNextPage: page < totalPages,
         hasPreviousPage: page > 1,
       },
-    }
+    };
   }
 
   /**
@@ -248,8 +253,8 @@ export class ExpenseModel {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
-    })
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   /**
@@ -273,8 +278,8 @@ export class ExpenseModel {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
-    })
+      orderBy: { createdAt: "desc" },
+    });
   }
 
   /**
@@ -286,32 +291,32 @@ export class ExpenseModel {
       include: {
         splits: true,
       },
-    })
+    });
 
-    const balances = new Map<string, Map<string, number>>()
+    const balances = new Map<string, Map<string, number>>();
 
     for (const expense of expenses) {
-      const payerId = expense.paidBy
-      
+      const payerId = expense.paidBy;
+
       for (const split of expense.splits) {
         if (split.userId !== payerId) {
           if (!balances.has(split.userId)) {
-            balances.set(split.userId, new Map())
+            balances.set(split.userId, new Map());
           }
-          
-          const userBalances = balances.get(split.userId)!
-          const currentBalance = userBalances.get(payerId) || 0
-          userBalances.set(payerId, currentBalance + Number(split.amountOwed))
+
+          const userBalances = balances.get(split.userId)!;
+          const currentBalance = userBalances.get(payerId) || 0;
+          userBalances.set(payerId, currentBalance + Number(split.amountOwed));
         }
       }
     }
 
     // Convert to array format
     const result: Array<{
-      fromUser: string
-      toUser: string
-      amount: number
-    }> = []
+      fromUser: string;
+      toUser: string;
+      amount: number;
+    }> = [];
 
     for (const [fromUser, toUsers] of balances) {
       for (const [toUser, amount] of toUsers) {
@@ -320,12 +325,12 @@ export class ExpenseModel {
             fromUser,
             toUser,
             amount: Math.round(amount * 100) / 100, // Round to 2 decimal places
-          })
+          });
         }
       }
     }
 
-    return result
+    return result;
   }
 
   /**
@@ -334,7 +339,7 @@ export class ExpenseModel {
   static async countByGroupId(groupId: string): Promise<number> {
     return prisma.expense.count({
       where: { groupId },
-    })
+    });
   }
 
   /**
@@ -346,8 +351,8 @@ export class ExpenseModel {
       _sum: {
         amount: true,
       },
-    })
+    });
 
-    return Number(result._sum.amount || 0)
+    return Number(result._sum.amount || 0);
   }
 }

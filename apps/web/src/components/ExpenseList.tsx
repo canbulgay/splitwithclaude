@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { MoreHorizontal, Edit, Trash2, User, DollarSign, Tag } from "lucide-react";
+import { MoreHorizontal, Edit, Trash2, User, DollarSign } from "lucide-react";
 import { ExpenseCategory } from "@splitwise/shared";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -104,7 +104,9 @@ export function ExpenseList({
                         {expense.description}
                       </h3>
                       <Badge variant="outline" className="text-xs">
-                        <span className="mr-1">{getCategoryIcon(expense.category)}</span>
+                        <span className="mr-1">
+                          {getCategoryIcon(expense.category)}
+                        </span>
                         {getCategoryLabel(expense.category)}
                       </Badge>
                       {showGroupName && (

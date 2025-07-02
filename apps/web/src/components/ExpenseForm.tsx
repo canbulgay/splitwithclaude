@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Calculator, DollarSign, Users, Tag } from "lucide-react";
+import { Plus, Calculator, DollarSign, Users } from "lucide-react";
 import { ExpenseCategory } from "@splitwise/shared";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -312,7 +312,9 @@ export function ExpenseForm({
           <Label htmlFor="category">Category</Label>
           <Select
             value={watch("category")}
-            onValueChange={(value: ExpenseCategory) => setValue("category", value)}
+            onValueChange={(value: ExpenseCategory) =>
+              setValue("category", value)
+            }
           >
             <SelectTrigger className="mt-1">
               <SelectValue placeholder="Select expense category" />

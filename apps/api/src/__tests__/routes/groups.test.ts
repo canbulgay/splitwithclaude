@@ -5,6 +5,7 @@ import { GroupModel } from "../../models/Group";
 import { UserModel } from "../../models/User";
 import { Role } from "@prisma/client";
 import { resetTestData, testData } from "../__mocks__/prisma";
+import { log, error} from "console";
 
 describe("Groups API", () => {
   let userToken: string;
@@ -334,10 +335,15 @@ describe("Groups API", () => {
     it("should get group expenses for members", async () => {
       const response = await request(app)
         .get(`/api/v1/groups/${groupId}/expenses`)
-        .set("Authorization", `Bearer ${memberToken}`)
-        .expect(200);
+        .set("Authorization", `Bearer ${memberToken}`);
 
-      console.error("should get group expenses for members", response.body);
+      error("DEBUG - Full response:", {
+        status: response.status,
+        headers: response.headers,
+        body: response.body
+      });
+
+      expect(response.status).toBe(200);
       expect(response.body.success).toBe(true);
       expect(response.body.data.group).toBeDefined();
       expect(response.body.data.expenses).toBeDefined();

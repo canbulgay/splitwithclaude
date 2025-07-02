@@ -8,7 +8,8 @@ import {
 import { GroupModel } from "../models/Group";
 import { createGroupSchema, expenseFilterSchema } from "@splitwise/shared";
 import { z } from "zod";
-import { Role, ExpenseCategory } from "@prisma/client";
+import { Role } from "@prisma/client";
+import { ExpenseCategory } from "@splitwise/shared";
 import { ExpenseModel } from "../models/Expense";
 
 const router: Router = Router();
@@ -437,19 +438,25 @@ router.get(
   async (req, res) => {
     try {
       const { groupId } = req.params;
-      
+
       // Parse and validate query parameters
       const queryValidation = expenseFilterSchema.safeParse({
         page: req.query.page ? parseInt(req.query.page as string) : undefined,
-        limit: req.query.limit ? parseInt(req.query.limit as string) : undefined,
+        limit: req.query.limit
+          ? parseInt(req.query.limit as string)
+          : undefined,
         category: req.query.category as ExpenseCategory,
         paidBy: req.query.paidBy as string,
-        minAmount: req.query.minAmount ? parseFloat(req.query.minAmount as string) : undefined,
-        maxAmount: req.query.maxAmount ? parseFloat(req.query.maxAmount as string) : undefined,
+        minAmount: req.query.minAmount
+          ? parseFloat(req.query.minAmount as string)
+          : undefined,
+        maxAmount: req.query.maxAmount
+          ? parseFloat(req.query.maxAmount as string)
+          : undefined,
         startDate: req.query.startDate as string,
         endDate: req.query.endDate as string,
-        sortBy: req.query.sortBy as 'createdAt' | 'amount' | 'description',
-        sortOrder: req.query.sortOrder as 'asc' | 'desc',
+        sortBy: req.query.sortBy as "createdAt" | "amount" | "description",
+        sortOrder: req.query.sortOrder as "asc" | "desc",
       });
 
       if (!queryValidation.success) {
@@ -474,7 +481,10 @@ router.get(
       }
 
       // Get filtered and paginated expenses
-      const result = await ExpenseModel.findByGroupIdWithFilters(groupId, filters);
+      const result = await ExpenseModel.findByGroupIdWithFilters(
+        groupId,
+        filters
+      );
 
       res.json({
         success: true,
@@ -484,10 +494,10 @@ router.get(
             name: group.name,
             description: group.description,
           },
-          expenses: result.expenses.map(expense => ({
+          expenses: result.expenses.map((expense) => ({
             ...expense,
             amount: Number(expense.amount),
-            splits: expense.splits.map(split => ({
+            splits: expense.splits.map((split) => ({
               ...split,
               amountOwed: Number(split.amountOwed),
             })),
@@ -497,9 +507,15 @@ router.get(
       });
     } catch (error) {
       console.error("Error fetching group expenses:", error);
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined,
+      });
       res.status(500).json({
         success: false,
         error: "Failed to fetch group expenses",
+        debug: error instanceof Error ? error.message : String(error),
       });
     }
   }
@@ -515,9 +531,11 @@ router.get(
   requireGroupMember(),
   async (req, res) => {
     try {
-      const categories = Object.values(ExpenseCategory).map(category => ({
+      const categories = Object.values(ExpenseCategory).map((category) => ({
         value: category,
-        label: category.charAt(0) + category.slice(1).toLowerCase().replace(/_/g, ' '),
+        label:
+          category.charAt(0) +
+          category.slice(1).toLowerCase().replace(/_/g, " "),
         icon: getCategoryIcon(category),
       }));
 
