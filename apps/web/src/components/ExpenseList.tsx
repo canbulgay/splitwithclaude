@@ -11,7 +11,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
-import { Expense } from "@/lib/api/expenses";
+import { Expense } from "@/api/expenses";
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -151,8 +151,8 @@ export function ExpenseList({
                                 : "text-red-600"
                             }`}
                           >
-                            {userBalance >= 0 ? "+" : ""}$
-                            {userBalance.toFixed(2)}
+                            {userBalance >= 0 ? "+" : "-"}$
+                            {Math.abs(userBalance).toFixed(2)}
                           </span>
                         </div>
                       </div>

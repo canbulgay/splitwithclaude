@@ -1,25 +1,23 @@
 import { useState, useEffect } from "react";
 import { Plus, Users, Calendar, Settings } from "lucide-react";
-import { Layout } from "../components/layout";
-import { Button } from "../components/ui/button";
+import { Layout } from "@/components/layout";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import {
+  Input,
+  Label,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../components/ui/dialog";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { useAuth } from "../contexts/AuthContext";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+} from "@/components/ui";
+import { useAuth } from "@/contexts/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";

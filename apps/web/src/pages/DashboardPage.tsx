@@ -11,8 +11,8 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { ExpenseList } from "../components/ExpenseList";
-import { expenseApi, type Expense } from "@/lib/api/expenses";
-import { groupApi } from "@/lib/api/groups";
+import { expenseApi, type Expense } from "@/api/expenses";
+import { groupApi } from "@/api/groups";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -54,40 +54,46 @@ export function DashboardPage() {
   useEffect(() => {
     const fetchRecentExpenses = async () => {
       if (!user) return;
-      
+
       try {
         setLoading(true);
         setError(null);
-        
+
         // Get user's groups first
         const groups = await groupApi.getUserGroups();
-        
+
         // Get expenses from all groups
         const allExpenses: Expense[] = [];
-        
+
         for (const group of groups) {
           try {
             const groupExpenses = await expenseApi.getByGroupId(group.id);
             allExpenses.push(...groupExpenses.expenses);
           } catch (err) {
-            console.error(`Failed to fetch expenses for group ${group.id}:`, err);
+            console.error(
+              `Failed to fetch expenses for group ${group.id}:`,
+              err
+            );
           }
         }
-        
+
         // Sort by creation date (most recent first) and take top 5
         const sortedExpenses = allExpenses
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
           .slice(0, 5);
-        
+
         setRecentExpenses(sortedExpenses);
       } catch (err) {
-        console.error('Failed to fetch recent expenses:', err);
-        setError('Failed to load recent expenses');
+        console.error("Failed to fetch recent expenses:", err);
+        setError("Failed to load recent expenses");
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchRecentExpenses();
   }, [user]);
 
@@ -141,14 +147,12 @@ export function DashboardPage() {
             </CardHeader>
             <CardContent>
               {error ? (
-                <div className="text-center py-4 text-destructive">
-                  {error}
-                </div>
+                <div className="text-center py-4 text-destructive">{error}</div>
               ) : (
                 <div className="space-y-4">
                   <ExpenseList
                     expenses={recentExpenses}
-                    currentUserId={user?.id || ''}
+                    currentUserId={user?.id || ""}
                     loading={loading}
                     showGroupName={true}
                   />

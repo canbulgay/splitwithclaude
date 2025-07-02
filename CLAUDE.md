@@ -70,7 +70,6 @@ splitwise/
   │   │       ├── components/
   │   │       │   ├── ui/           # Reusable UI components
   │   │       │   ├── layout/       # Layout components
-  │   │       │   └── ExpenseForm.tsx
   │   │       ├── features/         # Empty - needs implementation
   │   │       ├── lib/              # Utility functions
   │   │       ├── hooks/            # Custom React hooks
@@ -164,7 +163,7 @@ Is the request valid and properly formatted?
                 └─ Yes → 200 OK or 201 Created
 ```
 
-<!-- ## Working Parameters
+## Working Parameters
 
 - Use parallel tool execution for independent operations
 - Apply "ultrathink" for complex architectural decisions
@@ -198,21 +197,6 @@ Is the request valid and properly formatted?
 - Balances auto-calculate after expense changes
 - All monetary amounts: positive numbers, 2 decimal places
 
-## Security Checklist (Every Feature)
-
-- [ ] Validate all user inputs
-- [ ] Authorize group membership before operations
-- [ ] Sanitize expense descriptions
-- [ ] Use prepared statements for database queries
-- [ ] Rate limit API endpoints (100 requests/minute per user)
-
-## Performance Requirements
-
-- Pagination: 20 items per page for expense lists
-- Debounced search inputs
-- Optimistic UI updates for expense creation
-- Database indexes on user_id and group_id columns
-
 ## Custom Commands (.claude/commands/)
 
 - `/start-feature` - Begin structured feature development
@@ -239,7 +223,7 @@ Is the request valid and properly formatted?
 
 <!-- This section doesnt seem with claude ai -->
 
-## Session Documentation Requirements
+<!-- ## Session Documentation Requirements
 
 **After each session, update PROGRESS.md with:**
 
@@ -247,7 +231,7 @@ Is the request valid and properly formatted?
 - Features implemented or bugs fixed
 - Tests added/modified
 - Known issues or technical debt
-- Next recommended steps
+- Next recommended steps -->
 
 ## UI/UX Guidelines
 

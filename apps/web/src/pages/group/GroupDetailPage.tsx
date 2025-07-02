@@ -9,33 +9,31 @@ import {
   UserPlus,
   Trash2,
 } from "lucide-react";
-import { Layout } from "../components/layout";
-import { Button } from "../components/ui/button";
+import { Layout } from "@/components/layout";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
-import {
+  Input,
+  Label,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../components/ui/dialog";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { ExpenseList } from "../components/ExpenseList";
-import { CreateExpenseDialog } from "../components/ExpenseForm";
-import { useAuth } from "../contexts/AuthContext";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Button,
+} from "@/components/ui";
+import { ExpenseList } from "@/components/ExpenseList";
+import { CreateExpenseDialog } from "@/components/ExpenseForm";
+import { useAuth } from "@/contexts/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import apiClient from "@/api";
-import { expenseApi, type Expense } from "@/lib/api/expenses";
+import { expenseApi, type Expense } from "@/api/expenses";
 
 const addMemberSchema = z.object({
   email: z.string().email("Invalid email format"),

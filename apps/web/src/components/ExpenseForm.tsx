@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { expenseApi } from "@/lib/api/expenses";
+import { expenseApi } from "@/api/expenses";
 import {
   EqualSplitCalculator,
   PercentageSplitCalculator,
@@ -51,15 +51,23 @@ interface Group {
 
 // Form validation schema
 const expenseFormSchema = z.object({
-  description: z.string().min(1, "Description is required").max(200, "Description too long"),
-  amount: z.number().positive("Amount must be positive").multipleOf(0.01, "Amount must have at most 2 decimal places"),
+  description: z
+    .string()
+    .min(1, "Description is required")
+    .max(200, "Description too long"),
+  amount: z
+    .number()
+    .positive("Amount must be positive")
+    .multipleOf(0.01, "Amount must have at most 2 decimal places"),
   paidBy: z.string().cuid("Please select who paid"),
   splitMethod: z.enum(["equal", "exact", "percentage"]),
-  splits: z.array(z.object({
-    userId: z.string().cuid(),
-    amount: z.number().optional(),
-    percentage: z.number().optional(),
-  })),
+  splits: z.array(
+    z.object({
+      userId: z.string().cuid(),
+      amount: z.number().optional(),
+      percentage: z.number().optional(),
+    })
+  ),
 });
 
 type ExpenseFormData = z.infer<typeof expenseFormSchema>;
@@ -80,9 +88,9 @@ export function ExpenseForm({
   isEditing = false,
 }: ExpenseFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [splitMethod, setSplitMethod] = useState<"equal" | "exact" | "percentage">(
-    initialData?.splitMethod || "equal"
-  );
+  const [splitMethod, setSplitMethod] = useState<
+    "equal" | "exact" | "percentage"
+  >(initialData?.splitMethod || "equal");
 
   const {
     register,
@@ -100,11 +108,13 @@ export function ExpenseForm({
       amount: initialData?.amount || 0,
       paidBy: initialData?.paidBy || "",
       splitMethod: initialData?.splitMethod || "equal",
-      splits: initialData?.splits || group.members.map(member => ({
-        userId: member.userId,
-        amount: 0,
-        percentage: 0,
-      })),
+      splits:
+        initialData?.splits ||
+        group.members.map((member) => ({
+          userId: member.userId,
+          amount: 0,
+          percentage: 0,
+        })),
     },
   });
 
@@ -121,7 +131,7 @@ export function ExpenseForm({
     if (watchedAmount <= 0) return;
 
     try {
-      const participants: SplitParticipant[] = group.members.map(member => ({
+      const participants: SplitParticipant[] = group.members.map((member) => ({
         userId: member.userId,
         name: member.user.name,
       }));
@@ -136,17 +146,22 @@ export function ExpenseForm({
         const percentages = participants.map((p, index) => {
           // Adjust last percentage for rounding
           const isLast = index === participants.length - 1;
-          const adjustedPercentage = isLast 
-            ? Number((100 - (equalPercentage * (participants.length - 1))).toFixed(2))
+          const adjustedPercentage = isLast
+            ? Number(
+                (100 - equalPercentage * (participants.length - 1)).toFixed(2)
+              )
             : equalPercentage;
-          
+
           return {
             userId: p.userId,
             percentage: adjustedPercentage,
           };
         });
-        
-        results = PercentageSplitCalculator.calculate(watchedAmount, percentages);
+
+        results = PercentageSplitCalculator.calculate(
+          watchedAmount,
+          percentages
+        );
       } else {
         // For exact amounts, don't auto-calculate - let user input
         return;
@@ -161,7 +176,7 @@ export function ExpenseForm({
         });
       });
     } catch (error) {
-      console.error('Error calculating splits:', error);
+      console.error("Error calculating splits:", error);
     }
   }, [watchedAmount, splitMethod, group.members, update]);
 
@@ -169,14 +184,17 @@ export function ExpenseForm({
   useEffect(() => {
     if (watchedAmount > 0 && watchedSplits.length > 0) {
       try {
-        const splitResults: SplitResult[] = watchedSplits.map(split => ({
+        const splitResults: SplitResult[] = watchedSplits.map((split) => ({
           userId: split.userId,
           amount: split.amount || 0,
           percentage: split.percentage || 0,
         }));
 
-        const validation = SplitValidator.validateSplit(watchedAmount, splitResults);
-        
+        const validation = SplitValidator.validateSplit(
+          watchedAmount,
+          splitResults
+        );
+
         if (!validation.isValid) {
           setError("splits", {
             type: "manual",
@@ -194,13 +212,15 @@ export function ExpenseForm({
     }
   }, [watchedSplits, watchedAmount, setError, clearErrors]);
 
-  const handleSplitMethodChange = (method: "equal" | "exact" | "percentage") => {
+  const handleSplitMethodChange = (
+    method: "equal" | "exact" | "percentage"
+  ) => {
     setSplitMethod(method);
     setValue("splitMethod", method);
-    
+
     // Clear any existing split errors when changing methods
     clearErrors("splits");
-    
+
     // For exact method, reset to zero amounts to let user input
     if (method === "exact" && watchedAmount > 0) {
       group.members.forEach((member, index) => {
@@ -213,12 +233,19 @@ export function ExpenseForm({
     }
   };
 
-  const handleSplitChange = (index: number, field: "amount" | "percentage", value: number) => {
+  const handleSplitChange = (
+    index: number,
+    field: "amount" | "percentage",
+    value: number
+  ) => {
     const currentSplit = watchedSplits[index];
-    
+
     try {
       if (field === "amount") {
-        const percentage = watchedAmount > 0 ? Number(((value / watchedAmount) * 100).toFixed(2)) : 0;
+        const percentage =
+          watchedAmount > 0
+            ? Number(((value / watchedAmount) * 100).toFixed(2))
+            : 0;
         update(index, {
           ...currentSplit,
           amount: Number(value.toFixed(2)),
@@ -237,10 +264,9 @@ export function ExpenseForm({
         });
       }
     } catch (error) {
-      console.error('Error updating split:', error);
+      console.error("Error updating split:", error);
     }
   };
-
 
   const onFormSubmit = async (data: ExpenseFormData) => {
     setIsSubmitting(true);
@@ -248,7 +274,7 @@ export function ExpenseForm({
       // Convert splits to the format expected by the API
       const formattedData = {
         ...data,
-        splits: data.splits.map(split => ({
+        splits: data.splits.map((split) => ({
           userId: split.userId,
           amount: split.amount || 0,
         })),
@@ -273,7 +299,9 @@ export function ExpenseForm({
             className="mt-1"
           />
           {errors.description && (
-            <p className="text-sm text-destructive mt-1">{errors.description.message}</p>
+            <p className="text-sm text-destructive mt-1">
+              {errors.description.message}
+            </p>
           )}
         </div>
 
@@ -290,7 +318,9 @@ export function ExpenseForm({
             />
           </div>
           {errors.amount && (
-            <p className="text-sm text-destructive mt-1">{errors.amount.message}</p>
+            <p className="text-sm text-destructive mt-1">
+              {errors.amount.message}
+            </p>
           )}
         </div>
 
@@ -312,7 +342,9 @@ export function ExpenseForm({
             </SelectContent>
           </Select>
           {errors.paidBy && (
-            <p className="text-sm text-destructive mt-1">{errors.paidBy.message}</p>
+            <p className="text-sm text-destructive mt-1">
+              {errors.paidBy.message}
+            </p>
           )}
         </div>
       </div>
@@ -360,27 +392,38 @@ export function ExpenseForm({
           {fields.map((field, index) => {
             const member = group.members[index];
             const split = watchedSplits[index];
-            
+
             return (
-              <div key={field.id} className="flex items-center gap-3 p-3 border rounded-lg">
+              <div
+                key={field.id}
+                className="flex items-center gap-3 p-3 border rounded-lg"
+              >
                 <div className="flex-1">
                   <p className="font-medium">{member?.user.name}</p>
-                  <p className="text-sm text-muted-foreground">{member?.user.email}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {member?.user.email}
+                  </p>
                 </div>
-                
+
                 {splitMethod === "exact" && (
                   <div className="w-24">
                     <Input
                       type="number"
                       step="0.01"
                       value={split?.amount || 0}
-                      onChange={(e) => handleSplitChange(index, "amount", parseFloat(e.target.value) || 0)}
+                      onChange={(e) =>
+                        handleSplitChange(
+                          index,
+                          "amount",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
                       placeholder="0.00"
                       className="text-right"
                     />
                   </div>
                 )}
-                
+
                 {splitMethod === "percentage" && (
                   <div className="w-20">
                     <div className="relative">
@@ -388,30 +431,45 @@ export function ExpenseForm({
                         type="number"
                         step="0.01"
                         value={split?.percentage || 0}
-                        onChange={(e) => handleSplitChange(index, "percentage", parseFloat(e.target.value) || 0)}
+                        onChange={(e) =>
+                          handleSplitChange(
+                            index,
+                            "percentage",
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
                         placeholder="0"
                         className="text-right pr-6"
                       />
-                      <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                      <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-sm text-muted-foreground">
+                        %
+                      </span>
                     </div>
                   </div>
                 )}
-                
+
                 <div className="w-20 text-right">
-                  <p className="font-medium">${(split?.amount || 0).toFixed(2)}</p>
+                  <p className="font-medium">
+                    ${(split?.amount || 0).toFixed(2)}
+                  </p>
                 </div>
               </div>
             );
           })}
-          
+
           {errors.splits && (
             <p className="text-sm text-destructive">{errors.splits.message}</p>
           )}
-          
+
           <div className="border-t pt-3 mt-3">
             <div className="flex justify-between items-center font-semibold">
               <span>Total:</span>
-              <span>${(watchedSplits.reduce((sum, split) => sum + (split.amount || 0), 0)).toFixed(2)}</span>
+              <span>
+                $
+                {watchedSplits
+                  .reduce((sum, split) => sum + (split.amount || 0), 0)
+                  .toFixed(2)}
+              </span>
             </div>
             {watchedAmount > 0 && (
               <div className="flex justify-between items-center text-sm text-muted-foreground">
@@ -440,8 +498,10 @@ export function ExpenseForm({
         >
           {isSubmitting ? (
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
+          ) : isEditing ? (
+            "Update Expense"
           ) : (
-            isEditing ? "Update Expense" : "Create Expense"
+            "Create Expense"
           )}
         </Button>
       </div>
@@ -455,10 +515,10 @@ interface CreateExpenseDialogProps {
   trigger?: React.ReactNode;
 }
 
-export function CreateExpenseDialog({ 
-  group, 
-  onExpenseCreated, 
-  trigger 
+export function CreateExpenseDialog({
+  group,
+  onExpenseCreated,
+  trigger,
 }: CreateExpenseDialogProps) {
   const [open, setOpen] = useState(false);
 
@@ -470,16 +530,16 @@ export function CreateExpenseDialog({
         amount: data.amount,
         description: data.description,
         paidBy: data.paidBy,
-        splits: data.splits.map(split => ({
+        splits: data.splits.map((split) => ({
           userId: split.userId,
           amount: split.amount || 0,
         })),
       });
-      
+
       setOpen(false);
       onExpenseCreated();
     } catch (error) {
-      console.error('Failed to create expense:', error);
+      console.error("Failed to create expense:", error);
       // TODO: Show error toast to user
     }
   };
