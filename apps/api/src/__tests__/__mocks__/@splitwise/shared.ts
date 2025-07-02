@@ -30,6 +30,17 @@ export const createGroupSchema = z.object({
   description: z.string().max(500).optional(),
 })
 
+export const createExpenseSchema = z.object({
+  groupId: z.string().cuid(),
+  amount: z.number().positive().multipleOf(0.01),
+  description: z.string().min(1).max(200),
+  paidBy: z.string().cuid(),
+  splits: z.array(z.object({
+    userId: z.string().cuid(),
+    amount: z.number().positive().multipleOf(0.01),
+  })),
+})
+
 // Mock enums
 export enum Role {
   ADMIN = 'ADMIN',

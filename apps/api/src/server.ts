@@ -7,6 +7,7 @@ import dotenv from 'dotenv'
 import prisma from './lib/db'
 import authRoutes from './routes/auth'
 import groupRoutes from './routes/groups'
+import expenseRoutes from './routes/expenses'
 
 // Load environment variables
 dotenv.config()
@@ -65,6 +66,9 @@ app.use('/api/v1/auth', authRoutes)
 
 // Group routes
 app.use('/api/v1/groups', groupRoutes)
+
+// Expense routes
+app.use('/api/v1/expenses', expenseRoutes)
 
 // API routes will be added here
 app.use('/api/v1', (req, res) => {

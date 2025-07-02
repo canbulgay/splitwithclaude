@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Plus, Users, Receipt, CreditCard, TrendingUp } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { Layout } from "../components/layout";
@@ -9,9 +10,15 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import { ExpenseList } from "../components/ExpenseList";
+import { expenseApi, type Expense } from "@/lib/api/expenses";
+import { groupApi } from "@/lib/api/groups";
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const stats = [
     {
@@ -44,29 +51,45 @@ export function DashboardPage() {
     },
   ];
 
-  const recentExpenses = [
-    {
-      id: 1,
-      description: "Dinner at Mario's",
-      amount: "$45.50",
-      group: "Friends",
-      date: "2 hours ago",
-    },
-    {
-      id: 2,
-      description: "Grocery shopping",
-      amount: "$127.30",
-      group: "Roommates",
-      date: "1 day ago",
-    },
-    {
-      id: 3,
-      description: "Movie tickets",
-      amount: "$28.00",
-      group: "Friends",
-      date: "3 days ago",
-    },
-  ];
+  useEffect(() => {
+    const fetchRecentExpenses = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get user's groups first
+        const groups = await groupApi.getUserGroups();
+        
+        // Get expenses from all groups
+        const allExpenses: Expense[] = [];
+        
+        for (const group of groups) {
+          try {
+            const groupExpenses = await expenseApi.getByGroupId(group.id);
+            allExpenses.push(...groupExpenses.expenses);
+          } catch (err) {
+            console.error(`Failed to fetch expenses for group ${group.id}:`, err);
+          }
+        }
+        
+        // Sort by creation date (most recent first) and take top 5
+        const sortedExpenses = allExpenses
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 5);
+        
+        setRecentExpenses(sortedExpenses);
+      } catch (err) {
+        console.error('Failed to fetch recent expenses:', err);
+        setError('Failed to load recent expenses');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRecentExpenses();
+  }, [user]);
 
   return (
     <Layout>
@@ -117,27 +140,25 @@ export function DashboardPage() {
               <CardDescription>Your latest expense activity</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentExpenses.map((expense) => (
-                  <div
-                    key={expense.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {expense.description}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {expense.group} • {expense.date}
-                      </p>
-                    </div>
-                    <div className="font-medium">{expense.amount}</div>
-                  </div>
-                ))}
-              </div>
-              <Button variant="outline" className="w-full mt-4">
-                View All Expenses
-              </Button>
+              {error ? (
+                <div className="text-center py-4 text-destructive">
+                  {error}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <ExpenseList
+                    expenses={recentExpenses}
+                    currentUserId={user?.id || ''}
+                    loading={loading}
+                    showGroupName={true}
+                  />
+                  {!loading && recentExpenses.length > 0 && (
+                    <Button variant="outline" className="w-full mt-4">
+                      View All Expenses
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

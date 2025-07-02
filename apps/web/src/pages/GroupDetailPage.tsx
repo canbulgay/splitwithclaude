@@ -28,11 +28,14 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { ExpenseList } from "../components/ExpenseList";
+import { CreateExpenseDialog } from "../components/ExpenseForm";
 import { useAuth } from "../contexts/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import apiClient from "@/api";
+import { expenseApi, type Expense } from "@/lib/api/expenses";
 
 const addMemberSchema = z.object({
   email: z.string().email("Invalid email format"),
@@ -74,6 +77,9 @@ export function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [addMemberDialogOpen, setAddMemberDialogOpen] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expensesLoading, setExpensesLoading] = useState(true);
+  const [expensesError, setExpensesError] = useState<string | null>(null);
 
   const {
     register,
@@ -107,6 +113,31 @@ export function GroupDetailPage() {
     if (groupId) {
       fetchGroup();
     }
+  }, [groupId]);
+
+  useEffect(() => {
+    const fetchExpenses = async () => {
+      if (!groupId) return;
+
+      try {
+        setExpensesLoading(true);
+        setExpensesError(null);
+
+        const data = await expenseApi.getByGroupId(groupId);
+        if (!data || !data.expenses) {
+          setExpensesError("No expenses found for this group");
+          return;
+        }
+        setExpenses(data.expenses);
+      } catch (err: any) {
+        console.error("Error fetching expenses:", err);
+        setExpensesError("Failed to load expenses");
+      } finally {
+        setExpensesLoading(false);
+      }
+    };
+
+    fetchExpenses();
   }, [groupId]);
 
   const getUserRole = () => {
@@ -412,15 +443,67 @@ export function GroupDetailPage() {
 
         {/* Recent Expenses */}
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Expenses</CardTitle>
-            <CardDescription>Latest expenses in this group</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <div>
+              <CardTitle>Recent Expenses</CardTitle>
+              <CardDescription>Latest expenses in this group</CardDescription>
+            </div>
+            {group && (
+              <CreateExpenseDialog
+                group={{
+                  id: group.id,
+                  name: group.name,
+                  members: group.members.map((member) => ({
+                    userId: member.userId,
+                    role: member.role,
+                    user: member.user,
+                  })),
+                }}
+                onExpenseCreated={async () => {
+                  // Refresh expenses after creating a new one
+                  try {
+                    const data = await expenseApi.getByGroupId(groupId!);
+                    setExpenses(data.expenses);
+                  } catch (err) {
+                    console.error("Failed to refresh expenses:", err);
+                  }
+                }}
+                trigger={
+                  <Button size="sm" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Expense
+                  </Button>
+                }
+              />
+            )}
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No expenses yet</p>
-              <p className="text-sm">Add your first expense to get started</p>
-            </div>
+            {expensesError ? (
+              <div className="text-center py-4 text-destructive">
+                {expensesError}
+              </div>
+            ) : (
+              <ExpenseList
+                expenses={expenses}
+                currentUserId={user?.id || ""}
+                loading={expensesLoading}
+                onEdit={(expense) => {
+                  // TODO: Implement expense editing
+                  console.log("Edit expense:", expense);
+                }}
+                onDelete={async (expenseId) => {
+                  try {
+                    await expenseApi.delete(expenseId);
+                    // Refresh expenses after deletion
+                    const data = await expenseApi.getByGroupId(groupId!);
+                    setExpenses(data.expenses);
+                  } catch (err) {
+                    console.error("Failed to delete expense:", err);
+                    // TODO: Show error toast
+                  }
+                }}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

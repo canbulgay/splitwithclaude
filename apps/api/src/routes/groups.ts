@@ -9,7 +9,6 @@ import { GroupModel } from "../models/Group";
 import { createGroupSchema } from "@splitwise/shared";
 import { z } from "zod";
 import { Role } from "@prisma/client";
-import { logger } from "@splitwise/shared";
 
 const router: Router = Router();
 
@@ -152,8 +151,6 @@ router.put(
       const { groupId } = req.params;
       const updateData = req.body;
 
-      logger.debug("updateData:", updateData);
-      logger.debug("groupId:", groupId);
       // Check if group exists
       const existingGroup = await GroupModel.findById(groupId);
       if (!existingGroup) {
@@ -164,12 +161,7 @@ router.put(
         return;
       }
 
-      logger.debug("existingGroup:", existingGroup);
-
       const updatedGroup = await GroupModel.update(groupId, updateData);
-
-      logger.debug("updatedGroup:", updatedGroup);
-
       // Fetch updated group with members
       const groupWithMembers = await GroupModel.findWithMembers(groupId);
 
@@ -463,7 +455,14 @@ router.get(
             name: group.name,
             description: group.description,
           },
-          expenses: group.expenses,
+          expenses: group.expenses.map(expense => ({
+            ...expense,
+            amount: Number(expense.amount),
+            splits: expense.splits.map(split => ({
+              ...split,
+              amountOwed: Number(split.amountOwed),
+            })),
+          })),
         },
       });
     } catch (error) {

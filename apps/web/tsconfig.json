@@ -24,7 +24,8 @@
       "@/lib/*": ["./src/lib/*"],
       "@/hooks/*": ["./src/hooks/*"],
       "@/types/*": ["./src/types/*"],
-      "@splitwise/shared": ["../../packages/shared/src"]
+      "@splitwise/shared": ["../../packages/shared/src"],
+      "@api/*": ["./src/api/*"]
     }
   },
   "include": ["src"],

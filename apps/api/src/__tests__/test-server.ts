@@ -4,6 +4,7 @@ import helmet from 'helmet'
 import dotenv from 'dotenv'
 import authRoutes from '../routes/auth'
 import groupRoutes from '../routes/groups'
+import expenseRoutes from '../routes/expenses'
 
 // Load environment variables
 dotenv.config()
@@ -33,6 +34,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/v1/auth', authRoutes)
 app.use('/api/v1/groups', groupRoutes)
+app.use('/api/v1/expenses', expenseRoutes)
 
 // 404 handler
 app.use('*', (req, res) => {

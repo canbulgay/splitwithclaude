@@ -1,4 +1,5 @@
 // Mock Prisma client for testing
+import cuid from 'cuid'
 
 // Create a simple mock database
 const mockDatabase = {
@@ -16,6 +17,8 @@ const testData = {
   users: {} as Record<string, any>,
   groups: {} as Record<string, any>,
   groupMembers: {} as Record<string, any>,
+  expenses: {} as Record<string, any>,
+  expenseSplits: {} as Record<string, any>,
 }
 
 // Mock user data - will be populated during tests
@@ -25,7 +28,7 @@ const mockUsers: Record<string, any> = {}
 const prismaMock: any = {
   user: {
     create: jest.fn(({ data }) => {
-      const id = `user-${Date.now()}-${Math.random()}`
+      const id = cuid()
       const user = { id, ...data, createdAt: new Date(), updatedAt: new Date() }
       mockUsers[id] = user
       testData.users[id] = user
@@ -49,7 +52,7 @@ const prismaMock: any = {
   },
   group: {
     create: jest.fn(({ data }) => {
-      const id = `group-${Date.now()}-${Math.random()}`
+      const id = cuid()
       const group = { id, ...data, createdAt: new Date(), updatedAt: new Date() }
       testData.groups[id] = group
       mockDatabase.groups.set(id, group)
@@ -179,20 +182,164 @@ const prismaMock: any = {
     deleteMany: jest.fn(() => Promise.resolve({ count: 0 })),
   },
   expense: {
-    create: jest.fn(),
-    findMany: jest.fn(() => Promise.resolve([])),
-    findUnique: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-    deleteMany: jest.fn(() => Promise.resolve({ count: 0 })),
+    create: jest.fn(({ data }) => {
+      const id = cuid()
+      const expense = {
+        id,
+        groupId: data.group?.connect?.id || data.groupId,
+        amount: data.amount,
+        description: data.description,
+        paidBy: data.payer?.connect?.id || data.paidBy,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      testData.expenses[id] = expense
+      mockDatabase.expenses.set(id, expense)
+      return Promise.resolve(expense)
+    }),
+    findMany: jest.fn(({ where, include }) => {
+      let expenses = Object.values(testData.expenses)
+      if (where?.groupId) {
+        expenses = expenses.filter((e: any) => e.groupId === where.groupId)
+      }
+      if (include?.splits) {
+        expenses = expenses.map((expense: any) => ({
+          ...expense,
+          splits: Object.values(testData.expenseSplits).filter((s: any) => s.expenseId === expense.id)
+        }))
+      }
+      if (include?.payer) {
+        expenses = expenses.map((expense: any) => ({
+          ...expense,
+          payer: testData.users[expense.paidBy] || { id: expense.paidBy, name: 'Test User', email: 'test@test.com' }
+        }))
+      }
+      return Promise.resolve(expenses)
+    }),
+    findUnique: jest.fn(({ where, include }) => {
+      if (where.id) {
+        const expense = testData.expenses[where.id]
+        if (!expense) return Promise.resolve(null)
+        
+        let result: any = { ...expense }
+        
+        if (include?.splits) {
+          const splits = Object.values(testData.expenseSplits).filter((s: any) => s.expenseId === expense.id)
+          result.splits = splits.map((split: any) => ({
+            ...split,
+            user: testData.users[split.userId] || { id: split.userId, name: 'Test User', email: 'test@test.com' }
+          }))
+        }
+        
+        if (include?.payer) {
+          result.payer = testData.users[expense.paidBy] || { id: expense.paidBy, name: 'Test User', email: 'test@test.com' }
+        }
+        
+        if (include?.group) {
+          result.group = testData.groups[expense.groupId] || { id: expense.groupId, name: 'Test Group' }
+        }
+        
+        return Promise.resolve(result)
+      }
+      return Promise.resolve(null)
+    }),
+    update: jest.fn(({ where, data }) => {
+      if (where.id) {
+        const expense = testData.expenses[where.id]
+        if (expense) {
+          const updated = {
+            ...expense,
+            amount: data.amount !== undefined ? data.amount : expense.amount,
+            description: data.description !== undefined ? data.description : expense.description,
+            paidBy: data.payer?.connect?.id !== undefined ? data.payer.connect.id : expense.paidBy,
+            updatedAt: new Date()
+          }
+          testData.expenses[where.id] = updated
+          return Promise.resolve(updated)
+        }
+      }
+      return Promise.resolve(null)
+    }),
+    delete: jest.fn(({ where }) => {
+      if (where.id) {
+        const expense = testData.expenses[where.id]
+        if (expense) {
+          delete testData.expenses[where.id]
+          // Also delete associated splits
+          Object.keys(testData.expenseSplits).forEach(key => {
+            if (testData.expenseSplits[key].expenseId === where.id) {
+              delete testData.expenseSplits[key]
+            }
+          })
+          return Promise.resolve(expense)
+        }
+      }
+      return Promise.resolve(null)
+    }),
+    deleteMany: jest.fn(() => {
+      const count = Object.keys(testData.expenses).length
+      testData.expenses = {}
+      testData.expenseSplits = {}
+      return Promise.resolve({ count })
+    }),
   },
   expenseSplit: {
-    create: jest.fn(),
-    findMany: jest.fn(() => Promise.resolve([])),
+    create: jest.fn(({ data }) => {
+      const id = cuid()
+      const split = {
+        id,
+        expenseId: data.expenseId,
+        userId: data.userId,
+        amountOwed: data.amountOwed,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      testData.expenseSplits[id] = split
+      mockDatabase.expenseSplits.set(id, split)
+      return Promise.resolve(split)
+    }),
+    createMany: jest.fn(({ data }) => {
+      const splits = data.map((splitData: any) => {
+        const id = cuid()
+        const split = {
+          id,
+          expenseId: splitData.expenseId,
+          userId: splitData.userId,
+          amountOwed: splitData.amountOwed,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+        testData.expenseSplits[id] = split
+        mockDatabase.expenseSplits.set(id, split)
+        return split
+      })
+      return Promise.resolve({ count: splits.length })
+    }),
+    findMany: jest.fn(({ where }) => {
+      let splits = Object.values(testData.expenseSplits)
+      if (where?.expenseId) {
+        splits = splits.filter((s: any) => s.expenseId === where.expenseId)
+      }
+      return Promise.resolve(splits)
+    }),
     findUnique: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-    deleteMany: jest.fn(() => Promise.resolve({ count: 0 })),
+    deleteMany: jest.fn(({ where }) => {
+      let count = 0
+      if (where?.expenseId) {
+        Object.keys(testData.expenseSplits).forEach(key => {
+          if (testData.expenseSplits[key].expenseId === where.expenseId) {
+            delete testData.expenseSplits[key]
+            count++
+          }
+        })
+      } else {
+        count = Object.keys(testData.expenseSplits).length
+        testData.expenseSplits = {}
+      }
+      return Promise.resolve({ count })
+    }),
   },
   settlement: {
     create: jest.fn(),
@@ -215,13 +362,13 @@ const prismaMock: any = {
     if (Array.isArray(operations)) {
       return await Promise.all(operations)
     }
-    // Handle transaction callback - simulate GroupModel.createWithAdmin
+    // Handle transaction callback - simulate database operations within transaction
     const transactionContext = {
       ...prismaMock,
       group: {
         ...prismaMock.group,
         create: jest.fn(({ data }) => {
-          const id = `group-${Date.now()}-${Math.random()}`
+          const id = cuid()
           const group = { 
             id, 
             name: data.name,
@@ -233,10 +380,58 @@ const prismaMock: any = {
           testData.groups[id] = group
           return Promise.resolve(group)
         })
+      },
+      expense: {
+        ...prismaMock.expense,
+        create: jest.fn(({ data }) => {
+          const id = cuid()
+          const expense = {
+            id,
+            groupId: data.group?.connect?.id || data.groupId,
+            amount: data.amount,
+            description: data.description,
+            paidBy: data.payer?.connect?.id || data.paidBy,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+          testData.expenses[id] = expense
+          return Promise.resolve(expense)
+        })
+      },
+      expenseSplit: {
+        ...prismaMock.expenseSplit,
+        createMany: jest.fn(({ data }) => {
+          const splits = data.map((splitData: any) => {
+            const id = cuid()
+            const split = {
+              id,
+              expenseId: splitData.expenseId,
+              userId: splitData.userId,
+              amountOwed: splitData.amountOwed,
+              createdAt: new Date(),
+              updatedAt: new Date()
+            }
+            testData.expenseSplits[id] = split
+            return split
+          })
+          return Promise.resolve({ count: splits.length })
+        }),
+        deleteMany: jest.fn(({ where }) => {
+          let count = 0
+          if (where?.expenseId) {
+            Object.keys(testData.expenseSplits).forEach(key => {
+              if (testData.expenseSplits[key].expenseId === where.expenseId) {
+                delete testData.expenseSplits[key]
+                count++
+              }
+            })
+          }
+          return Promise.resolve({ count })
+        })
       }
     }
     return await operations(transactionContext)
-  }),
+  })
 }
 
 // Function to reset test data between tests
@@ -244,6 +439,8 @@ export const resetTestData = () => {
   testData.users = {}
   testData.groups = {}
   testData.groupMembers = {}
+  testData.expenses = {}
+  testData.expenseSplits = {}
   mockDatabase.users.clear()
   mockDatabase.groups.clear()
   mockDatabase.groupMembers.clear()

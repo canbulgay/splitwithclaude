@@ -10,7 +10,7 @@ Systematically identify and resolve test failures while maintaining code quality
 
 1. **Run Test Suite**
    ```bash
-   npm test -- --verbose
+   pnpm test -- --verbose
    ```
 2. **Categorize Failures**
 
@@ -24,6 +24,16 @@ Systematically identify and resolve test failures while maintaining code quality
    - Missing test data or setup
    - Async timing issues
    - Database state problems
+
+4. **Debugging**
+
+   - When tests are fail and you need to console log the spesific areas use
+
+   ```bash
+   import { log, error } from "console";
+
+   log("Test data sent:", JSON.stringify(expenseData, null, 2));
+   ```
 
 ### Step 2: Fix Strategy
 
@@ -44,13 +54,15 @@ Systematically identify and resolve test failures while maintaining code quality
 1. Run Related Tests
 
    ```bash
-   npm test -- --testPathPattern="expense"
+   pnpm test -- --testPathPattern="expense"
    ```
+
+````
 
 2. Full Test Suite
 
    ```bash
-   npm test
+   pnpm test
    ```
 
 3. Regression Check
@@ -65,3 +77,5 @@ Systematically identify and resolve test failures while maintaining code quality
 - Async operations: Use proper awaits and test utilities
 - Mock issues: Update mocks to match new interfaces
 - Type errors: Update TypeScript types after schema changes
+
+````

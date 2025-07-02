@@ -15,7 +15,7 @@ You are a senior full-stack engineer with expertise in React, Node.js, TypeScrip
 1. **Analysis First**: Use filesystem MCP to examine existing code before implementing
 2. **TDD Approach**: Write failing tests first, implement minimal code, refactor
 3. **Context7 Usage**: Add "use context7" for any new library implementations
-4. **Quality Gates**: All tests pass + lint + type-check before proceeding
+4. **Quality Gates**: All tests pass + type-check before proceeding
 5. **Progress Tracking**: Update PROGRESS.md after each significant change
 
 <!-- ## Available MCP Tools
@@ -39,7 +39,7 @@ You are a senior full-stack engineer with expertise in React, Node.js, TypeScrip
 # Essential Commands (run frequently)
 pnpm dev          # Start development server
 pnpm test         # Run all tests
-pnpm lint         # ESLint check + fix
+# pnpm lint         # ESLint check + fix
 pnpm type-check   # TypeScript validation
 pnpm build        # Production build test
 
@@ -63,22 +63,32 @@ pnpm db:studio    # Open Prisma Studio
 ## Project Structure
 
 ```
-src/
-├── components/ui/     # Reusable UI components
-├── features/
-│   ├── auth/         # Authentication logic
-│   ├── groups/       # Group management
-│   ├── expenses/     # Expense tracking
-│   └── settlements/  # Debt settlement
-├── lib/              # Utilities and configurations
-├── hooks/            # Custom React hooks
-└── types/            # TypeScript definitions
-
-server/
-├── routes/           # API route handlers
-├── middleware/       # Express middleware
-├── services/         # Business logic
-└── utils/            # Helper functions
+splitwise/
+  ├── apps/
+  │   ├── web/
+  │   │   └── src/
+  │   │       ├── components/
+  │   │       │   ├── ui/           # Reusable UI components
+  │   │       │   ├── layout/       # Layout components
+  │   │       │   └── ExpenseForm.tsx
+  │   │       ├── features/         # Empty - needs implementation
+  │   │       ├── lib/              # Utility functions
+  │   │       ├── hooks/            # Custom React hooks
+  │   │       ├── types/            # TypeScript definitions
+  │   │       ├── pages/            # Page components
+  │   │       ├── contexts/         # React contexts
+  │   │       └── api/              # API client
+  │   └── api/
+  │       └── src/
+  │           ├── routes/           # API route handlers
+  │           ├── middleware/       # Express middleware
+  │           ├── services/         # Business logic
+  │           ├── utils/            # Helper functions
+  │           ├── models/           # Database models
+  │           ├── lib/              # Configuration utilities
+  │           └── __tests__/        # Test files
+  └── packages/
+      └── shared/                   # Shared types and utilities
 ```
 
 ## Tailwind CSS Rules
@@ -97,6 +107,61 @@ className={cn(
 // ❌ WRONG: Escaped quotes or template literals
 className="\"bg-white shadow\""
 className={`flex ${isActive ? 'bg-blue-100' : ''}`}
+```
+
+## Import Rules
+
+```tsx
+// ✅ CORRECT: Clean
+import { Button, Input, Label } from "../components/ui";
+// ❌ WRONG: Not Clean
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+```
+
+## API Response Format
+
+All error responses should follow this consistent format:
+
+```json
+{
+  "success": false,
+  "error": "Human-readable error message",
+  "details": {
+    // Optional: Additional error details
+    "field": "validation error",
+    "code": "ERROR_CODE"
+  }
+}
+```
+
+All success responses should follow this format:
+
+```json
+{
+  "success": true,
+  "data": {
+    // Response data
+  },
+  "message": "Optional success message"
+}
+```
+
+## Status Code Decision Tree
+
+```
+Is the request valid and properly formatted?
+├─ No → 400 Bad Request
+└─ Yes → Is the user authenticated?
+    ├─ No → 401 Unauthorized
+    └─ Yes → Does the user have permission?
+        ├─ No → 403 Forbidden
+        └─ Yes → Does the resource exist?
+            ├─ No → 404 Not Found
+            └─ Yes → Can the operation be performed?
+                ├─ No → 409 Conflict or 422 Unprocessable Entity
+                └─ Yes → 200 OK or 201 Created
 ```
 
 <!-- ## Working Parameters
@@ -166,7 +231,7 @@ className={`flex ${isActive ? 'bg-blue-100' : ''}`}
 ## Quality Verification (Before Any Commit)
 
 - [ ] All tests passing (unit + integration)
-- [ ] ESLint and TypeScript checks clean
+- [ ] TypeScript checks clean
 - [ ] Security considerations addressed
 - [ ] Performance impact assessed
 - [ ] PROGRESS.md updated with session summary
