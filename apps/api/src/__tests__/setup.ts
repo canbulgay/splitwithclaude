@@ -1,7 +1,7 @@
 // Test setup file
 // Set test environment variables
 process.env.NODE_ENV = 'test'
-process.env.JWT_SECRET = 'test-jwt-secret-key'
+process.env.JWT_SECRET = 'test-jwt-secret-key-for-tests-minimum-32-characters-required'
 process.env.JWT_EXPIRES_IN = '1h'
 process.env.BCRYPT_ROUNDS = '4' // Lower rounds for faster tests
 
@@ -21,4 +21,12 @@ global.console = {
 // Setup global test helpers
 global.beforeEach(() => {
   jest.clearAllMocks()
+  
+  // Clear cache between tests
+  try {
+    const { cache } = require('../lib/cache')
+    cache.clear()
+  } catch (error) {
+    // Cache module might not be available in all tests
+  }
 })

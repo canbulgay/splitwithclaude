@@ -1,5 +1,6 @@
 import { hash, compare } from "bcryptjs";
 import { sign, verify } from "jsonwebtoken";
+import { randomBytes } from "crypto";
 import { UserModel } from "../models/User";
 import { User } from "@prisma/client";
 
@@ -23,13 +24,31 @@ export interface RegisterData {
 }
 
 export class AuthService {
-  // TODO: Use environment variables for sensitive data
-  private static readonly JWT_SECRET =
-    process.env.JWT_SECRET || "fallback-secret-key";
+  private static readonly JWT_SECRET = AuthService.getJWTSecret();
   private static readonly JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
   private static readonly BCRYPT_ROUNDS = parseInt(
     process.env.BCRYPT_ROUNDS || "12"
   );
+
+  /**
+   * Get JWT secret from environment, fail if not provided
+   */
+  private static getJWTSecret(): string {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error(
+        "JWT_SECRET environment variable is required for secure authentication. " +
+        "Please set a strong, randomly generated secret in your environment variables."
+      );
+    }
+    if (secret.length < 32) {
+      throw new Error(
+        "JWT_SECRET must be at least 32 characters long for security. " +
+        "Please use a longer, more secure secret."
+      );
+    }
+    return secret;
+  }
 
   /**
    * Hash a password using bcrypt
@@ -198,17 +217,26 @@ export class AuthService {
   }
 
   /**
-   * TODO: Generate a secure random password using a library like `crypto`
-   * Generate a secure random password for testing
+   * Generate a cryptographically secure random password
    */
-  static generateRandomPassword(): string {
-    const length = 12;
+  static generateRandomPassword(length: number = 16): string {
     const charset =
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+    
+    // Generate cryptographically secure random bytes
+    const randomBytesArray = randomBytes(length);
     let password = "";
 
     for (let i = 0; i < length; i++) {
-      password += charset.charAt(Math.floor(Math.random() * charset.length));
+      // Use modulo to map byte values to charset indices
+      password += charset.charAt(randomBytesArray[i] % charset.length);
+    }
+
+    // Ensure password meets our validation requirements
+    const validation = AuthService.validatePassword(password);
+    if (!validation.isValid) {
+      // Recursively generate until we get a valid password
+      return AuthService.generateRandomPassword(length);
     }
 
     return password;

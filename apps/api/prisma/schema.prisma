@@ -31,6 +31,8 @@ model User {
   settlementsFrom Settlement[]   @relation("SettlementFrom")
   settlementsTo   Settlement[]   @relation("SettlementTo")
 
+  @@index([email])
+  @@index([provider])
   @@map("users")
 }
 
@@ -63,6 +65,8 @@ model GroupMember {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([groupId, userId])
+  @@index([userId])
+  @@index([groupId, role])
   @@map("group_members")
 }
 
@@ -85,6 +89,13 @@ model Expense {
 
   @@index([groupId])
   @@index([paidBy])
+  @@index([category])
+  @@index([createdAt])
+  @@index([amount])
+  @@index([groupId, createdAt])
+  @@index([groupId, category])
+  @@index([paidBy, createdAt])
+  @@index([groupId, paidBy, amount])
   @@map("expenses")
 }
 
@@ -99,6 +110,8 @@ model ExpenseSplit {
   user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([expenseId, userId])
+  @@index([userId])
+  @@index([expenseId, userId])
   @@map("expense_splits")
 }
 
@@ -122,6 +135,11 @@ model Settlement {
 
   @@index([fromUser])
   @@index([toUser])
+  @@index([status])
+  @@index([fromUser, status])
+  @@index([toUser, status])
+  @@index([createdAt])
+  @@index([fromUser, toUser, createdAt])
   @@map("settlements")
 }
 

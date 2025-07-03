@@ -5,6 +5,7 @@ import morgan from 'morgan'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import prisma from './lib/db'
+import { performanceMonitor } from './lib/performance'
 import authRoutes from './routes/auth'
 import groupRoutes from './routes/groups'
 import expenseRoutes from './routes/expenses'
@@ -39,6 +40,9 @@ app.use(morgan('combined'))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
+// Performance monitoring middleware
+app.use(performanceMonitor.expressMiddleware())
+
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
@@ -62,6 +66,13 @@ app.get('/health', async (req, res) => {
     })
   }
 })
+
+// Performance metrics endpoint (development only)
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/metrics', (req, res) => {
+    res.json(performanceMonitor.getStats())
+  })
+}
 
 // Authentication routes
 app.use('/api/v1/auth', authRoutes)

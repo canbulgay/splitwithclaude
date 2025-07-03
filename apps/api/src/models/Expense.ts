@@ -1,6 +1,7 @@
 import { Expense as PrismaExpense, Prisma } from "@prisma/client";
 import { ExpenseCategory } from "@splitwise/shared";
 import prisma from "../lib/db";
+import { CacheInvalidation } from "../lib/cache";
 
 interface ExpenseSplitInput {
   userId: string;
@@ -29,6 +30,12 @@ export class ExpenseModel {
           amountOwed: split.amountOwed,
         })),
       });
+
+      // Invalidate cache for affected users and group
+      const affectedUsers = [expenseData.payer?.connect?.id, ...splits.map(s => s.userId)].filter(Boolean) as string[];
+      if (expenseData.group?.connect?.id) {
+        CacheInvalidation.invalidateExpenseCache(expenseData.group.connect.id, affectedUsers);
+      }
 
       return expense;
     });
@@ -111,9 +118,23 @@ export class ExpenseModel {
    * Delete expense
    */
   static async delete(id: string): Promise<PrismaExpense> {
-    return prisma.expense.delete({
+    // Get expense details before deletion for cache invalidation
+    const expense = await prisma.expense.findUnique({
+      where: { id },
+      include: { splits: true },
+    });
+
+    const deletedExpense = await prisma.expense.delete({
       where: { id },
     });
+
+    // Invalidate cache if expense was found
+    if (expense) {
+      const affectedUsers = [expense.paidBy, ...expense.splits.map(s => s.userId)];
+      CacheInvalidation.invalidateExpenseCache(expense.groupId, affectedUsers);
+    }
+
+    return deletedExpense;
   }
 
   /**

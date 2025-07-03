@@ -1,5 +1,6 @@
 import { ExpenseModel } from '../models/Expense';
 import { SettlementModel } from '../models/Settlement';
+import { cache, CacheKeys } from '../lib/cache';
 
 export interface Balance {
   fromUser: string;
@@ -22,27 +23,55 @@ export interface UserBalanceSummary {
 
 export class BalanceService {
   /**
-   * Calculate real-time balances for a group
-   * This method provides immediate balance calculation without caching
+   * Calculate real-time balances for a group with caching
    */
   static async calculateGroupBalancesRealTime(groupId: string): Promise<Balance[]> {
-    return ExpenseModel.calculateGroupBalances(groupId);
+    // Try to get from cache first
+    const cacheKey = CacheKeys.groupBalances(groupId);
+    const cachedBalances = cache.get<Balance[]>(cacheKey);
+    
+    if (cachedBalances) {
+      return cachedBalances;
+    }
+
+    // Calculate and cache the result
+    const balances = await ExpenseModel.calculateGroupBalances(groupId);
+    cache.set(cacheKey, balances, 5 * 60 * 1000); // Cache for 5 minutes
+    
+    return balances;
   }
 
   /**
-   * Get settlement suggestions to minimize transactions
+   * Get settlement suggestions to minimize transactions with caching
    */
   static async getSettlementSuggestions(groupId: string): Promise<SettlementSuggestion[]> {
-    return SettlementModel.suggestSettlements(groupId);
+    // Try to get from cache first
+    const cacheKey = CacheKeys.settlementSuggestions(groupId);
+    const cachedSuggestions = cache.get<SettlementSuggestion[]>(cacheKey);
+    
+    if (cachedSuggestions) {
+      return cachedSuggestions;
+    }
+
+    // Calculate and cache the result
+    const suggestions = await SettlementModel.suggestSettlements(groupId);
+    cache.set(cacheKey, suggestions, 5 * 60 * 1000); // Cache for 5 minutes
+    
+    return suggestions;
   }
 
   /**
-   * Calculate balance summary for a specific user across all groups
+   * Calculate balance summary for a specific user across all groups with caching
    */
   static async calculateUserBalanceSummary(userId: string): Promise<UserBalanceSummary> {
-    // This would typically involve querying all groups the user is part of
-    // For now, we'll implement a basic version
+    // Try to get from cache first
+    const cacheKey = CacheKeys.userBalances(userId);
+    const cachedSummary = cache.get<UserBalanceSummary>(cacheKey);
     
+    if (cachedSummary) {
+      return cachedSummary;
+    }
+
     // Get all expenses where user is involved (paid or owes)
     const expensesPaid = await ExpenseModel.findByPayerId(userId);
     const expensesOwed = await ExpenseModel.findByDebtor(userId);
@@ -66,12 +95,17 @@ export class BalanceService {
     
     const netBalance = totalPaid - totalOwed;
     
-    return {
+    const summary = {
       userId,
       totalOwed: Math.round(totalOwed * 100) / 100,
       totalOwedTo: Math.round((totalPaid - totalOwed) * 100) / 100,
       netBalance: Math.round(netBalance * 100) / 100,
     };
+
+    // Cache the result
+    cache.set(cacheKey, summary, 5 * 60 * 1000); // Cache for 5 minutes
+    
+    return summary;
   }
 
   /**
