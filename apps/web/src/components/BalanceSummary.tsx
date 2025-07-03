@@ -1,14 +1,17 @@
 import { Card } from "./ui/card";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
 import { UserBalanceSummary } from "../api/balances";
 import { cn } from "../lib/utils";
+import { CreditCard } from "lucide-react";
 
 interface BalanceSummaryProps {
   summary: UserBalanceSummary;
   className?: string;
+  onSettleUpClick?: () => void;
 }
 
-export function BalanceSummary({ summary, className }: BalanceSummaryProps) {
+export function BalanceSummary({ summary, className, onSettleUpClick }: BalanceSummaryProps) {
   const { totalOwed, totalOwedTo, netBalance } = summary;
 
   const isPositive = netBalance > 0;
@@ -64,7 +67,7 @@ export function BalanceSummary({ summary, className }: BalanceSummaryProps) {
           </div>
         </div>
 
-        <div className="text-center">
+        <div className="text-center space-y-3">
           <p
             className={cn(
               "font-medium",
@@ -75,6 +78,18 @@ export function BalanceSummary({ summary, className }: BalanceSummaryProps) {
           >
             {getBalanceText()}
           </p>
+          
+          {!isEven && onSettleUpClick && (
+            <Button
+              onClick={onSettleUpClick}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <CreditCard className="h-4 w-4" />
+              Settle Up
+            </Button>
+          )}
         </div>
       </div>
     </Card>

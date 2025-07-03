@@ -51,7 +51,12 @@ export interface Settlement {
   fromUser: string
   toUser: string
   amount: number
-  settledAt: Date
+  description?: string
+  status: SettlementStatus
+  createdAt: Date
+  confirmedAt?: Date
+  completedAt?: Date
+  settledAt: Date // Deprecated, keeping for backward compatibility
 }
 
 export interface SettlementExpense {
@@ -76,6 +81,13 @@ export enum ExpenseCategory {
   TRAVEL = 'TRAVEL',
   EDUCATION = 'EDUCATION',
   OTHER = 'OTHER',
+}
+
+export enum SettlementStatus {
+  PENDING = 'PENDING',     // Settlement created, waiting for confirmation
+  CONFIRMED = 'CONFIRMED', // Recipient confirmed they received payment
+  COMPLETED = 'COMPLETED', // Settlement fully completed
+  CANCELLED = 'CANCELLED', // Settlement was cancelled
 }
 
 // API Response types

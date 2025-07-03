@@ -1,30 +1,38 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Card } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { BalanceList } from './BalanceList';
-import { balancesApi, GroupBalanceResponse, SettlementSuggestion } from '../api/balances';
-import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Card } from "./ui/card";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { BalanceList } from "./BalanceList";
+import {
+  balancesApi,
+  GroupBalanceResponse,
+  SettlementSuggestion,
+} from "../api/balances";
+import { useAuth } from "../contexts/AuthContext";
+import { useSettlements } from "../hooks/useSettlements";
+import { GroupSettleAllButton } from "./GroupSettleAllButton";
+import { ArrowLeft, RefreshCw } from "lucide-react";
 
 export function GroupBalancePage() {
   const { groupId } = useParams<{ groupId: string }>();
   const { user } = useAuth();
-  const [balanceData, setBalanceData] = useState<GroupBalanceResponse | null>(null);
+  const [balanceData, setBalanceData] = useState<GroupBalanceResponse | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchBalances = async () => {
     if (!groupId) return;
-    
+
     try {
       setError(null);
       const data = await balancesApi.getGroupBalances(groupId);
       setBalanceData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch balances');
+      setError(err instanceof Error ? err.message : "Failed to fetch balances");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -40,13 +48,21 @@ export function GroupBalancePage() {
     await fetchBalances();
   };
 
+  const {
+    settleFromSuggestion,
+    error: settlementError,
+  } = useSettlements();
+
   const handleSettleUp = async (suggestion: SettlementSuggestion) => {
-    // TODO: Implement settlement creation
-    console.log('Settle up:', suggestion);
-    // This would typically:
-    // 1. Create a settlement record
-    // 2. Refresh the balances
-    // 3. Show success message
+    const success = await settleFromSuggestion(suggestion);
+    if (success) {
+      // Refresh balances after successful settlement
+      await fetchBalances();
+      // You could add a toast notification here
+      console.log("Settlement created successfully");
+    } else {
+      console.error("Failed to create settlement:", settlementError);
+    }
   };
 
   if (loading) {
@@ -97,17 +113,17 @@ export function GroupBalancePage() {
 
   // Calculate summary statistics
   const userBalances = balances.filter(
-    balance => balance.fromUser === user.id || balance.toUser === user.id
+    (balance) => balance.fromUser === user.id || balance.toUser === user.id
   );
-  
+
   const totalOwed = userBalances
-    .filter(balance => balance.fromUser === user.id)
+    .filter((balance) => balance.fromUser === user.id)
     .reduce((sum, balance) => sum + balance.amount, 0);
-    
+
   const totalOwedTo = userBalances
-    .filter(balance => balance.toUser === user.id)
+    .filter((balance) => balance.toUser === user.id)
     .reduce((sum, balance) => sum + balance.amount, 0);
-    
+
   const netBalance = totalOwedTo - totalOwed;
 
   return (
@@ -116,7 +132,11 @@ export function GroupBalancePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" onClick={() => window.history.back()}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.history.back()}
+            >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
@@ -128,7 +148,9 @@ export function GroupBalancePage() {
             variant="outline"
             size="sm"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         </div>
@@ -136,52 +158,95 @@ export function GroupBalancePage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-red-600">${totalOwed.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-red-600">
+              ${totalOwed.toFixed(2)}
+            </div>
             <div className="text-sm text-gray-500">You owe</div>
           </Card>
-          
+
           <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">${totalOwedTo.toFixed(2)}</div>
+            <div className="text-2xl font-bold text-green-600">
+              ${totalOwedTo.toFixed(2)}
+            </div>
             <div className="text-sm text-gray-500">You are owed</div>
           </Card>
-          
-          <Card className={`p-4 text-center ${
-            netBalance > 0 ? 'bg-green-50 border-green-200' : 
-            netBalance < 0 ? 'bg-red-50 border-red-200' : 
-            'bg-gray-50 border-gray-200'
-          }`}>
-            <div className={`text-2xl font-bold ${
-              netBalance > 0 ? 'text-green-600' : 
-              netBalance < 0 ? 'text-red-600' : 
-              'text-gray-600'
-            }`}>
+
+          <Card
+            className={`p-4 text-center ${
+              netBalance > 0
+                ? "bg-green-50 border-green-200"
+                : netBalance < 0
+                ? "bg-red-50 border-red-200"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            <div
+              className={`text-2xl font-bold ${
+                netBalance > 0
+                  ? "text-green-600"
+                  : netBalance < 0
+                  ? "text-red-600"
+                  : "text-gray-600"
+              }`}
+            >
               ${Math.abs(netBalance).toFixed(2)}
             </div>
             <div className="text-sm text-gray-500">Net balance</div>
           </Card>
-          
+
           <Card className="p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">{suggestions.length}</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {suggestions.length}
+            </div>
             <div className="text-sm text-gray-500">Suggested settlements</div>
           </Card>
         </div>
 
-        {/* Balance Status */}
+        {/* Balance Status and Group Settlement */}
         <Card className="p-6 text-center">
           <div className="mb-4">
-            <Badge variant={
-              Math.abs(netBalance) < 0.01 ? 'secondary' :
-              netBalance > 0 ? 'default' : 'destructive'
-            } className="text-sm px-3 py-1">
-              {Math.abs(netBalance) < 0.01 ? 'Settled Up' :
-               netBalance > 0 ? 'Owed Money' : 'Owes Money'}
+            <Badge
+              variant={
+                Math.abs(netBalance) < 0.01
+                  ? "secondary"
+                  : netBalance > 0
+                  ? "default"
+                  : "destructive"
+              }
+              className="text-sm px-3 py-1"
+            >
+              {Math.abs(netBalance) < 0.01
+                ? "Settled Up"
+                : netBalance > 0
+                ? "Owed Money"
+                : "Owes Money"}
             </Badge>
           </div>
-          <div className="text-lg font-medium">
-            {Math.abs(netBalance) < 0.01 ? "You are all settled up!" :
-             netBalance > 0 ? `You are owed $${netBalance.toFixed(2)} overall` :
-             `You owe $${Math.abs(netBalance).toFixed(2)} overall`}
+          <div className="text-lg font-medium mb-4">
+            {Math.abs(netBalance) < 0.01
+              ? "You are all settled up!"
+              : netBalance > 0
+              ? `You are owed $${netBalance.toFixed(2)} overall`
+              : `You owe $${Math.abs(netBalance).toFixed(2)} overall`}
           </div>
+          
+          {/* Group Settle All Button */}
+          {groupId && (
+            <GroupSettleAllButton
+              groupId={groupId}
+              suggestions={suggestions}
+              onSuccess={(settlements) => {
+                console.log("Group settled:", settlements);
+                // Refresh balances after successful group settlement
+                fetchBalances();
+              }}
+              onError={(error) => {
+                console.error("Group settlement error:", error);
+                setError(error);
+              }}
+              className="mt-4"
+            />
+          )}
         </Card>
 
         {/* Balance Details */}

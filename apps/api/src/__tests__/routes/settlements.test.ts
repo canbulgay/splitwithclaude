@@ -319,7 +319,7 @@ describe('Settlement Routes', () => {
       const mockSettlements = [{ id: 'settlement-1' }];
 
       GroupModel.isMember.mockResolvedValue(true);
-      SettlementModel.findByGroupId.mockResolvedValue(mockSettlements);
+      SettlementModel.findByGroupMembers.mockResolvedValue(mockSettlements);
 
       const response = await request(app)
         .get('/settlements/group/group-1')

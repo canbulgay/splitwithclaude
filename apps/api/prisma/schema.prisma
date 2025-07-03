@@ -104,11 +104,16 @@ model ExpenseSplit {
 
 // Settlement model - debt settlements between users
 model Settlement {
-  id        String   @id @default(cuid())
-  fromUser  String   @map("from_user")
-  toUser    String   @map("to_user")
-  amount    Decimal  @db.Decimal(10, 2)
-  settledAt DateTime @default(now()) @map("settled_at")
+  id          String           @id @default(cuid())
+  fromUser    String           @map("from_user")
+  toUser      String           @map("to_user")
+  amount      Decimal          @db.Decimal(10, 2)
+  description String?          // Optional description for the settlement
+  status      SettlementStatus @default(PENDING)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  confirmedAt DateTime?        @map("confirmed_at") // When recipient confirmed
+  completedAt DateTime?        @map("completed_at") // When marked as paid
+  settledAt   DateTime         @default(now()) @map("settled_at") // Deprecated, keeping for backward compatibility
 
   // Relationships
   fromUserRel   User                @relation("SettlementFrom", fields: [fromUser], references: [id], onDelete: Cascade)
@@ -150,4 +155,11 @@ enum ExpenseCategory {
   TRAVEL
   EDUCATION
   OTHER
+}
+
+enum SettlementStatus {
+  PENDING    // Settlement created, waiting for confirmation
+  CONFIRMED  // Recipient confirmed they received payment
+  COMPLETED  // Settlement fully completed
+  CANCELLED  // Settlement was cancelled
 }

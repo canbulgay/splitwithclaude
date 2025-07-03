@@ -48,3 +48,4 @@ export {
   DropdownMenuRadioGroup,
 } from "./dropdown-menu";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+export { Textarea } from "./textarea";

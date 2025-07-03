@@ -12,6 +12,7 @@ import { DashboardPage } from "./pages/DashboardPage";
 import { GroupsPage } from "./pages/group/GroupsPage";
 import { GroupDetailPage } from "./pages/group/GroupDetailPage";
 import { GroupSettingsPage } from "./pages/group/GroupSettingsPage";
+import { GroupBalancePage } from "./components/GroupBalancePage";
 import { SettlementsPage } from "./pages/SettlementsPage";
 
 // Protected Route Component
@@ -114,6 +115,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <SettlementsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/groups/:groupId/balance"
+        element={
+          <ProtectedRoute>
+            <GroupBalancePage />
           </ProtectedRoute>
         }
       />

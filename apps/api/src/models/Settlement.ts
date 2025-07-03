@@ -103,7 +103,7 @@ export class SettlementModel {
           },
         },
       },
-      orderBy: { settledAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     })
   }
 
@@ -292,6 +292,172 @@ export class SettlementModel {
     return {
       sent: Number(sentResult._sum.amount || 0),
       received: Number(receivedResult._sum.amount || 0),
+    }
+  }
+
+  /**
+   * Confirm settlement (recipient confirms payment received)
+   */
+  static async confirmSettlement(id: string): Promise<PrismaSettlement> {
+    return prisma.settlement.update({
+      where: { id },
+      data: {
+        status: 'CONFIRMED',
+        confirmedAt: new Date(),
+      },
+    })
+  }
+
+  /**
+   * Complete settlement (payer marks as paid)
+   */
+  static async completeSettlement(id: string): Promise<PrismaSettlement> {
+    return prisma.settlement.update({
+      where: { id },
+      data: {
+        status: 'COMPLETED',
+        completedAt: new Date(),
+      },
+    })
+  }
+
+  /**
+   * Cancel settlement
+   */
+  static async cancelSettlement(id: string, reason?: string): Promise<PrismaSettlement> {
+    return prisma.settlement.update({
+      where: { id },
+      data: {
+        status: 'CANCELLED',
+        description: reason ? `${reason} (Cancelled)` : 'Cancelled',
+      },
+    })
+  }
+
+  /**
+   * Find pending settlements for a user (needing action)
+   */
+  static async findPendingByUserId(userId: string) {
+    return prisma.settlement.findMany({
+      where: {
+        OR: [
+          { fromUser: userId },
+          { toUser: userId },
+        ],
+        status: {
+          in: ['PENDING', 'CONFIRMED'],
+        },
+      },
+      include: {
+        fromUserRel: true,
+        toUserRel: true,
+        expenses: {
+          include: {
+            expense: {
+              include: {
+                group: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  /**
+   * Find settlements by status
+   */
+  static async findByStatus(status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED') {
+    return prisma.settlement.findMany({
+      where: { status },
+      include: {
+        fromUserRel: true,
+        toUserRel: true,
+        expenses: {
+          include: {
+            expense: {
+              include: {
+                group: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  /**
+   * Get settlement statistics by status
+   */
+  static async getSettlementStats(userId?: string) {
+    const whereClause = userId ? {
+      OR: [
+        { fromUser: userId },
+        { toUser: userId },
+      ],
+    } : {}
+
+    const stats = await prisma.settlement.groupBy({
+      by: ['status'],
+      where: whereClause,
+      _count: { id: true },
+      _sum: { amount: true },
+    })
+
+    return stats.reduce((acc, stat) => {
+      acc[stat.status] = {
+        count: stat._count.id,
+        totalAmount: Number(stat._sum.amount || 0),
+      }
+      return acc
+    }, {} as Record<string, { count: number; totalAmount: number }>)
+  }
+
+  /**
+   * Get settlements for users in a specific group
+   * This finds all settlements between group members, whether linked to expenses or not
+   */
+  static async findByGroupMembers(groupId: string) {
+    try {
+      // First get all group members
+      const groupMembers = await prisma.groupMember.findMany({
+        where: { groupId },
+        select: { userId: true },
+      })
+
+      const memberIds = groupMembers.map(member => member.userId)
+
+      if (memberIds.length === 0) {
+        return []
+      }
+
+      // Find all settlements between group members
+      return prisma.settlement.findMany({
+        where: {
+          fromUser: { in: memberIds },
+          toUser: { in: memberIds },
+        },
+        include: {
+          fromUserRel: true,
+          toUserRel: true,
+          expenses: {
+            include: {
+              expense: {
+                include: {
+                  group: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    } catch (error) {
+      console.error('Error in findByGroupMembers:', error)
+      // Return empty array on error to prevent cascade failures
+      return []
     }
   }
 }

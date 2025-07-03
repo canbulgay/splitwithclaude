@@ -3,6 +3,7 @@ import { authenticateToken } from "../middleware/auth";
 import { ExpenseModel } from "../models/Expense";
 import { SettlementModel } from "../models/Settlement";
 import { GroupModel } from "../models/Group";
+import { BalanceService } from "../services/BalanceService";
 
 const router: Router = Router();
 
@@ -32,18 +33,23 @@ router.get("/group/:groupId", authenticateToken, async (req, res) => {
       return;
     }
 
-    // Calculate current balances
-    const balances = await ExpenseModel.calculateGroupBalances(groupId);
+    // Calculate current balances including settlements
+    const balances = await BalanceService.calculateGroupBalancesWithSettlements(groupId);
 
-    // Get settlement suggestions to minimize transactions
-    const suggestions = await SettlementModel.suggestSettlements(groupId);
+    // Get settlement suggestions based on outstanding balances
+    const suggestions = await BalanceService.getActiveSettlementSuggestions(groupId);
+
+    // Get settlement progress
+    const progress = await BalanceService.getGroupSettlementProgress(groupId);
 
     res.json({
       success: true,
       data: {
         balances,
         suggestions,
+        progress,
         groupId,
+        isFullySettled: progress.isFullySettled,
       },
     });
   } catch (error) {
@@ -83,11 +89,12 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
     // Get all groups user is a member of
     const userGroups = await GroupModel.findByUserId(userId);
     
-    // Calculate balances for each group
+    // Calculate balances for each group including settlements
     const allBalances = await Promise.all(
       userGroups.map(async (group) => {
-        const balances = await ExpenseModel.calculateGroupBalances(group.id);
-        const suggestions = await SettlementModel.suggestSettlements(group.id);
+        const balances = await BalanceService.calculateGroupBalancesWithSettlements(group.id);
+        const suggestions = await BalanceService.getActiveSettlementSuggestions(group.id);
+        const progress = await BalanceService.getGroupSettlementProgress(group.id);
         
         // Filter to only balances involving the user
         const userBalances = balances.filter(
@@ -105,6 +112,8 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
           },
           balances: userBalances,
           suggestions: userSuggestions,
+          progress,
+          isFullySettled: progress.isFullySettled,
         };
       })
     );

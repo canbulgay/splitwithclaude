@@ -10,6 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Settlement } from "../api/settlements";
+import { SettlementStatusBadge } from "./SettlementStatusBadge";
+import { SettlementActions } from "./SettlementActions";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   MoreHorizontal,
@@ -23,7 +25,10 @@ interface SettlementListProps {
   settlements: Settlement[];
   onEdit?: (settlement: Settlement) => void;
   onDelete?: (settlementId: string) => void;
+  onUpdate?: (updatedSettlement: Settlement) => void;
+  onError?: (error: string) => void;
   showActions?: boolean;
+  showWorkflowActions?: boolean;
   className?: string;
 }
 
@@ -31,7 +36,10 @@ export const SettlementList: React.FC<SettlementListProps> = ({
   settlements,
   onEdit,
   onDelete,
+  onUpdate,
+  onError,
   showActions = true,
+  showWorkflowActions = true,
   className = "",
 }) => {
   const { user: currentUser } = useAuth();
@@ -121,7 +129,7 @@ export const SettlementList: React.FC<SettlementListProps> = ({
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="font-medium text-gray-900">
                         {isFromCurrentUser
                           ? "You"
@@ -135,6 +143,7 @@ export const SettlementList: React.FC<SettlementListProps> = ({
                       >
                         {isFromCurrentUser ? "Sent" : "Received"}
                       </Badge>
+                      <SettlementStatusBadge status={settlement.status} />
                     </div>
 
                     <div className="text-sm text-gray-600">
@@ -153,10 +162,20 @@ export const SettlementList: React.FC<SettlementListProps> = ({
 
                     <div className="text-xs text-gray-400 mt-2">
                       {format(
-                        new Date(settlement.settledAt),
+                        new Date(settlement.createdAt || settlement.settledAt),
                         "MMM d, yyyy 'at' h:mm a"
                       )}
                     </div>
+
+                    {showWorkflowActions && (
+                      <div className="mt-3">
+                        <SettlementActions
+                          settlement={settlement}
+                          onUpdate={onUpdate}
+                          onError={onError}
+                        />
+                      </div>
+                    )}
 
                     {settlement?.expenses && settlement.expenses.length > 0 && (
                       <div className="mt-2">

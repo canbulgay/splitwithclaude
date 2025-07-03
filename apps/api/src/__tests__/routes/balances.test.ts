@@ -5,16 +5,19 @@ import { authenticateToken } from '../../middleware/auth';
 import { GroupModel } from '../../models/Group';
 import { ExpenseModel } from '../../models/Expense';
 import { SettlementModel } from '../../models/Settlement';
+import { BalanceService } from '../../services/BalanceService';
 
-// Mock the database models and middleware
+// Mock the database models, services and middleware
 jest.mock('../../models/Group');
 jest.mock('../../models/Expense');
 jest.mock('../../models/Settlement');
+jest.mock('../../services/BalanceService');
 jest.mock('../../middleware/auth');
 
 const MockedGroupModel = GroupModel as jest.Mocked<typeof GroupModel>;
 const MockedExpenseModel = ExpenseModel as jest.Mocked<typeof ExpenseModel>;
 const MockedSettlementModel = SettlementModel as jest.Mocked<typeof SettlementModel>;
+const MockedBalanceService = BalanceService as jest.Mocked<typeof BalanceService>;
 const MockedAuthenticateToken = authenticateToken as jest.MockedFunction<typeof authenticateToken>;
 
 // Create test app
@@ -47,10 +50,18 @@ describe('Balance Routes', () => {
       const mockSuggestions = [
         { fromUser: 'user1', toUser: 'user2', amount: 25.50 },
       ];
+      const mockProgress = {
+        totalExpenseAmount: 100.0,
+        settledAmount: 25.0,
+        outstandingAmount: 75.0,
+        progressPercentage: 25,
+        isFullySettled: false,
+      };
 
       MockedGroupModel.isMember.mockResolvedValue(true);
-      MockedExpenseModel.calculateGroupBalances.mockResolvedValue(mockBalances);
-      MockedSettlementModel.suggestSettlements.mockResolvedValue(mockSuggestions);
+      MockedBalanceService.calculateGroupBalancesWithSettlements.mockResolvedValue(mockBalances);
+      MockedBalanceService.getActiveSettlementSuggestions.mockResolvedValue(mockSuggestions);
+      MockedBalanceService.getGroupSettlementProgress.mockResolvedValue(mockProgress);
 
       const response = await request(app)
         .get(`/api/v1/balances/group/${mockGroupId}`)
@@ -62,13 +73,16 @@ describe('Balance Routes', () => {
         data: {
           balances: mockBalances,
           suggestions: mockSuggestions,
+          progress: mockProgress,
           groupId: mockGroupId,
+          isFullySettled: mockProgress.isFullySettled,
         },
       });
 
       expect(MockedGroupModel.isMember).toHaveBeenCalledWith(mockGroupId, mockUser.id);
-      expect(MockedExpenseModel.calculateGroupBalances).toHaveBeenCalledWith(mockGroupId);
-      expect(MockedSettlementModel.suggestSettlements).toHaveBeenCalledWith(mockGroupId);
+      expect(MockedBalanceService.calculateGroupBalancesWithSettlements).toHaveBeenCalledWith(mockGroupId);
+      expect(MockedBalanceService.getActiveSettlementSuggestions).toHaveBeenCalledWith(mockGroupId);
+      expect(MockedBalanceService.getGroupSettlementProgress).toHaveBeenCalledWith(mockGroupId);
     });
 
     it('should return 401 for unauthenticated request', async () => {
@@ -105,7 +119,7 @@ describe('Balance Routes', () => {
 
     it('should handle database errors gracefully', async () => {
       MockedGroupModel.isMember.mockResolvedValue(true);
-      MockedExpenseModel.calculateGroupBalances.mockRejectedValue(new Error('Database error'));
+      MockedBalanceService.calculateGroupBalancesWithSettlements.mockRejectedValue(new Error('Database error'));
 
       const response = await request(app)
         .get(`/api/v1/balances/group/${mockGroupId}`)
@@ -142,13 +156,23 @@ describe('Balance Routes', () => {
         { fromUser: 'user3', toUser: 'user1', amount: 15.00 },
       ];
 
+      const mockProgress = {
+        totalExpenseAmount: 100.0,
+        settledAmount: 25.0,
+        outstandingAmount: 75.0,
+        progressPercentage: 25,
+        isFullySettled: false,
+      };
+
       MockedGroupModel.findByUserId.mockResolvedValue(mockGroups as any);
-      MockedExpenseModel.calculateGroupBalances
+      MockedBalanceService.calculateGroupBalancesWithSettlements
         .mockResolvedValueOnce(mockBalances1)
         .mockResolvedValueOnce(mockBalances2);
-      MockedSettlementModel.suggestSettlements
+      MockedBalanceService.getActiveSettlementSuggestions
         .mockResolvedValueOnce(mockSuggestions1)
         .mockResolvedValueOnce(mockSuggestions2);
+      MockedBalanceService.getGroupSettlementProgress
+        .mockResolvedValue(mockProgress);
 
       const response = await request(app)
         .get(`/api/v1/balances/user/${mockUser.id}`)

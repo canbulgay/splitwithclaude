@@ -90,6 +90,8 @@ router.post("/", authenticateToken, async (req, res) => {
       fromUserRel: { connect: { id: fromUser } },
       toUserRel: { connect: { id: toUser } },
       amount,
+      description,
+      status: 'PENDING',
     }, expenseIds);
 
     // Fetch with details for response
@@ -105,6 +107,51 @@ router.post("/", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to create settlement",
+    });
+  }
+});
+
+/**
+ * GET /settlements/pending
+ * Get pending settlements that need user action
+ */
+router.get("/pending", authenticateToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required",
+      });
+      return;
+    }
+
+    const pendingSettlements = await SettlementModel.findPendingByUserId(req.user.id);
+
+    // Separate settlements by action needed
+    const needingConfirmation = pendingSettlements.filter(
+      (s) => s.toUser === req.user!.id && s.status === 'PENDING'
+    );
+    const needingCompletion = pendingSettlements.filter(
+      (s) => s.fromUser === req.user!.id && s.status === 'CONFIRMED'
+    );
+    const awaitingResponse = pendingSettlements.filter(
+      (s) => s.fromUser === req.user!.id && s.status === 'PENDING'
+    );
+
+    res.json({
+      success: true,
+      data: {
+        needingConfirmation,    // User needs to confirm they received payment
+        needingCompletion,      // User needs to mark as completed after paying
+        awaitingResponse,       // User is waiting for recipient to confirm
+        total: pendingSettlements.length,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching pending settlements:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch pending settlements",
     });
   }
 });
@@ -409,7 +456,7 @@ router.get("/group/:groupId", authenticateToken, async (req, res) => {
       return;
     }
 
-    const settlements = await SettlementModel.findByGroupId(groupId);
+    const settlements = await SettlementModel.findByGroupMembers(groupId);
 
     // Calculate group settlement statistics
     const totalSettled = settlements.reduce((sum, settlement) => sum + Number(settlement.amount), 0);
@@ -489,6 +536,346 @@ router.get("/suggestions/:groupId", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch settlement suggestions",
+    });
+  }
+});
+
+/**
+ * POST /settlements/:id/confirm
+ * Confirm settlement receipt (toUser confirms they received payment)
+ */
+router.post("/:id/confirm", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required",
+      });
+      return;
+    }
+
+    const settlement = await SettlementModel.findById(id);
+
+    if (!settlement) {
+      res.status(404).json({
+        success: false,
+        error: "Settlement not found",
+      });
+      return;
+    }
+
+    // Only the recipient (toUser) can confirm settlement
+    if (req.user.id !== settlement.toUser) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied. Only the settlement recipient can confirm it.",
+      });
+      return;
+    }
+
+    // Can only confirm pending settlements
+    if (settlement.status !== 'PENDING') {
+      res.status(400).json({
+        success: false,
+        error: `Cannot confirm settlement with status: ${settlement.status}`,
+      });
+      return;
+    }
+
+    const updatedSettlement = await SettlementModel.confirmSettlement(id);
+    const settlementWithDetails = await SettlementModel.findWithDetails(updatedSettlement.id);
+
+    res.json({
+      success: true,
+      data: settlementWithDetails,
+      message: "Settlement confirmed successfully",
+    });
+  } catch (error) {
+    console.error("Error confirming settlement:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to confirm settlement",
+    });
+  }
+});
+
+/**
+ * POST /settlements/:id/complete
+ * Mark settlement as completed (fromUser marks as paid)
+ */
+router.post("/:id/complete", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required",
+      });
+      return;
+    }
+
+    const settlement = await SettlementModel.findById(id);
+
+    if (!settlement) {
+      res.status(404).json({
+        success: false,
+        error: "Settlement not found",
+      });
+      return;
+    }
+
+    // Only the payer (fromUser) can mark settlement as completed
+    if (req.user.id !== settlement.fromUser) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied. Only the settlement payer can mark it as completed.",
+      });
+      return;
+    }
+
+    // Can only complete confirmed settlements
+    if (settlement.status !== 'CONFIRMED') {
+      res.status(400).json({
+        success: false,
+        error: `Cannot complete settlement with status: ${settlement.status}. Settlement must be confirmed first.`,
+      });
+      return;
+    }
+
+    const updatedSettlement = await SettlementModel.completeSettlement(id);
+    const settlementWithDetails = await SettlementModel.findWithDetails(updatedSettlement.id);
+
+    res.json({
+      success: true,
+      data: settlementWithDetails,
+      message: "Settlement completed successfully",
+    });
+  } catch (error) {
+    console.error("Error completing settlement:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to complete settlement",
+    });
+  }
+});
+
+/**
+ * POST /settlements/:id/cancel
+ * Cancel a settlement (either party can cancel pending settlements)
+ */
+router.post("/:id/cancel", authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required",
+      });
+      return;
+    }
+
+    const settlement = await SettlementModel.findById(id);
+
+    if (!settlement) {
+      res.status(404).json({
+        success: false,
+        error: "Settlement not found",
+      });
+      return;
+    }
+
+    // Both parties can cancel their own settlements
+    if (req.user.id !== settlement.fromUser && req.user.id !== settlement.toUser) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied. You can only cancel settlements involving yourself.",
+      });
+      return;
+    }
+
+    // Can only cancel pending or confirmed settlements
+    if (settlement.status === 'COMPLETED' || settlement.status === 'CANCELLED') {
+      res.status(400).json({
+        success: false,
+        error: `Cannot cancel settlement with status: ${settlement.status}`,
+      });
+      return;
+    }
+
+    const updatedSettlement = await SettlementModel.cancelSettlement(id, reason);
+    const settlementWithDetails = await SettlementModel.findWithDetails(updatedSettlement.id);
+
+    res.json({
+      success: true,
+      data: settlementWithDetails,
+      message: "Settlement cancelled successfully",
+    });
+  } catch (error) {
+    console.error("Error cancelling settlement:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to cancel settlement",
+    });
+  }
+});
+
+/**
+ * POST /settlements/group/:groupId/settle-all
+ * Create optimized settlements to settle entire group
+ */
+router.post("/group/:groupId/settle-all", authenticateToken, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { description } = req.body;
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required",
+      });
+      return;
+    }
+
+    // Check if user is a member of the group
+    const isMember = await GroupModel.isMember(groupId, req.user.id);
+    if (!isMember) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied. You must be a group member to settle the group.",
+      });
+      return;
+    }
+
+    // Get optimized settlement suggestions
+    const suggestions = await BalanceService.getActiveSettlementSuggestions(groupId);
+
+    if (suggestions.length === 0) {
+      res.json({
+        success: true,
+        data: {
+          settlements: [],
+          message: "Group is already fully settled!",
+        },
+      });
+      return;
+    }
+
+    // Create all suggested settlements in a transaction
+    const settlements = await Promise.all(
+      suggestions.map(async (suggestion) => {
+        const settlementData = {
+          fromUserRel: { connect: { id: suggestion.fromUser } },
+          toUserRel: { connect: { id: suggestion.toUser } },
+          amount: suggestion.amount,
+          description: description || `Group settlement: ${suggestion.amount.toFixed(2)}`,
+          status: 'PENDING' as const,
+        };
+
+        const settlement = await SettlementModel.create(settlementData);
+        return SettlementModel.findWithDetails(settlement.id);
+      })
+    );
+
+    // Get updated group settlement progress
+    const progress = await BalanceService.getGroupSettlementProgress(groupId);
+    const isFullySettled = await BalanceService.isGroupFullySettled(groupId);
+
+    res.status(201).json({
+      success: true,
+      data: {
+        settlements,
+        progress,
+        isFullySettled,
+        message: `Created ${settlements.length} settlements to settle the group.`,
+        optimization: {
+          settlementsCreated: settlements.length,
+          totalAmount: settlements.reduce((sum, s) => s ? sum + Number(s.amount) : sum, 0),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error settling group:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to settle group",
+    });
+  }
+});
+
+/**
+ * POST /settlements/group/:groupId/complete-all
+ * Mark all confirmed settlements in a group as completed
+ */
+router.post("/group/:groupId/complete-all", authenticateToken, async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: "Authentication required",
+      });
+      return;
+    }
+
+    // Check if user is a member of the group
+    const isMember = await GroupModel.isMember(groupId, req.user.id);
+    if (!isMember) {
+      res.status(403).json({
+        success: false,
+        error: "Access denied. You must be a group member.",
+      });
+      return;
+    }
+
+    // Get all confirmed settlements in the group where user is the payer
+    const groupSettlements = await SettlementModel.findByGroupMembers(groupId);
+    const userConfirmedSettlements = groupSettlements.filter(
+      (s): s is NonNullable<typeof s> => s !== null && s.status === 'CONFIRMED' && s.fromUser === req.user!.id
+    );
+
+    if (userConfirmedSettlements.length === 0) {
+      res.json({
+        success: true,
+        data: {
+          completedSettlements: [],
+          message: "No confirmed settlements found for you to complete.",
+        },
+      });
+      return;
+    }
+
+    // Complete all confirmed settlements
+    const completedSettlements = await Promise.all(
+      userConfirmedSettlements.map(async (settlement) => {
+        const updated = await SettlementModel.completeSettlement(settlement.id);
+        return SettlementModel.findWithDetails(updated.id);
+      })
+    );
+
+    // Get updated progress
+    const progress = await BalanceService.getGroupSettlementProgress(groupId);
+    const isFullySettled = await BalanceService.isGroupFullySettled(groupId);
+
+    res.json({
+      success: true,
+      data: {
+        completedSettlements,
+        progress,
+        isFullySettled,
+        message: `Completed ${completedSettlements.length} settlements.`,
+      },
+    });
+  } catch (error) {
+    console.error("Error completing group settlements:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to complete group settlements",
     });
   }
 });

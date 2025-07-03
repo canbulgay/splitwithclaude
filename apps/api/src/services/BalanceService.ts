@@ -206,6 +206,210 @@ export class BalanceService {
   }
 
   /**
+   * Calculate group balances including confirmed settlements
+   * This provides the true outstanding balances after settlements
+   */
+  static async calculateGroupBalancesWithSettlements(groupId: string): Promise<Balance[]> {
+    try {
+      // Get original balances from expenses
+      const expenseBalances = await ExpenseModel.calculateGroupBalances(groupId);
+      
+      // Get all confirmed settlements between group members
+      const confirmedSettlements = await SettlementModel.findByGroupMembers(groupId);
+      const activeSettlements = confirmedSettlements.filter(
+        s => s && s.status === 'CONFIRMED' || s.status === 'COMPLETED'
+      );
+    
+    // Create a balance map for easier manipulation
+    const balanceMap = new Map<string, Map<string, number>>();
+    
+    // Initialize with expense balances
+    for (const balance of expenseBalances) {
+      if (!balanceMap.has(balance.fromUser)) {
+        balanceMap.set(balance.fromUser, new Map());
+      }
+      balanceMap.get(balance.fromUser)!.set(balance.toUser, balance.amount);
+    }
+    
+    // Subtract confirmed settlements
+    for (const settlement of activeSettlements) {
+      const fromUser = settlement.fromUser;
+      const toUser = settlement.toUser;
+      const amount = Number(settlement.amount);
+      
+      // Reduce the debt by the settlement amount
+      if (balanceMap.has(fromUser) && balanceMap.get(fromUser)!.has(toUser)) {
+        const currentBalance = balanceMap.get(fromUser)!.get(toUser)!;
+        const newBalance = currentBalance - amount;
+        
+        if (newBalance <= 0.01) {
+          // Debt is fully settled, remove it
+          balanceMap.get(fromUser)!.delete(toUser);
+          
+          // If there's overpayment, create reverse debt
+          if (newBalance < -0.01) {
+            if (!balanceMap.has(toUser)) {
+              balanceMap.set(toUser, new Map());
+            }
+            balanceMap.get(toUser)!.set(fromUser, Math.abs(newBalance));
+          }
+        } else {
+          balanceMap.get(fromUser)!.set(toUser, newBalance);
+        }
+      }
+    }
+    
+      // Convert back to Balance array
+      const finalBalances: Balance[] = [];
+      for (const [fromUser, userBalances] of balanceMap) {
+        for (const [toUser, amount] of userBalances) {
+          if (amount > 0.01) { // Only include significant balances
+            finalBalances.push({ fromUser, toUser, amount });
+          }
+        }
+      }
+      
+      return finalBalances;
+    } catch (error) {
+      console.error('Error in calculateGroupBalancesWithSettlements:', error);
+      // Fall back to expense-only balances if settlement calculation fails
+      return ExpenseModel.calculateGroupBalances(groupId);
+    }
+  }
+
+  /**
+   * Get settlement suggestions based on outstanding balances after settlements
+   */
+  static async getActiveSettlementSuggestions(groupId: string): Promise<SettlementSuggestion[]> {
+    try {
+      const outstandingBalances = await this.calculateGroupBalancesWithSettlements(groupId);
+      return this.optimizeBalanceArray(outstandingBalances);
+    } catch (error) {
+      console.error('Error in getActiveSettlementSuggestions:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Helper method to optimize a balance array into minimal settlements
+   */
+  private static optimizeBalanceArray(balances: Balance[]): SettlementSuggestion[] {
+    // Create a net balance map for each user
+    const netBalances = new Map<string, number>();
+    
+    // Calculate net balance for each user
+    for (const balance of balances) {
+      // Person who owes money
+      const currentDebt = netBalances.get(balance.fromUser) || 0;
+      netBalances.set(balance.fromUser, currentDebt - balance.amount);
+      
+      // Person who is owed money
+      const currentCredit = netBalances.get(balance.toUser) || 0;
+      netBalances.set(balance.toUser, currentCredit + balance.amount);
+    }
+    
+    // Separate debtors and creditors
+    const debtors = Array.from(netBalances.entries())
+      .filter(([_, balance]) => balance < -0.01)
+      .sort(([_, a], [__, b]) => a - b); // Most debt first
+    
+    const creditors = Array.from(netBalances.entries())
+      .filter(([_, balance]) => balance > 0.01)
+      .sort(([_, a], [__, b]) => b - a); // Most credit first
+    
+    const suggestions: SettlementSuggestion[] = [];
+    
+    let debtorIndex = 0;
+    let creditorIndex = 0;
+    
+    while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+      const [debtorId, debtorBalance] = debtors[debtorIndex];
+      const [creditorId, creditorBalance] = creditors[creditorIndex];
+      
+      const settlementAmount = Math.min(Math.abs(debtorBalance), creditorBalance);
+      
+      if (settlementAmount > 0.01) {
+        suggestions.push({
+          fromUser: debtorId,
+          toUser: creditorId,
+          amount: Math.round(settlementAmount * 100) / 100,
+        });
+        
+        // Update balances
+        debtors[debtorIndex][1] += settlementAmount;
+        creditors[creditorIndex][1] -= settlementAmount;
+      }
+      
+      // Move to next debtor/creditor if current one is settled
+      if (Math.abs(debtors[debtorIndex][1]) < 0.01) {
+        debtorIndex++;
+      }
+      if (creditors[creditorIndex][1] < 0.01) {
+        creditorIndex++;
+      }
+    }
+    
+    return suggestions;
+  }
+
+  /**
+   * Check if a group is fully settled (no outstanding balances)
+   */
+  static async isGroupFullySettled(groupId: string): Promise<boolean> {
+    const outstandingBalances = await this.calculateGroupBalancesWithSettlements(groupId);
+    return outstandingBalances.length === 0;
+  }
+
+  /**
+   * Get settlement progress for a group
+   */
+  static async getGroupSettlementProgress(groupId: string): Promise<{
+    totalExpenseAmount: number;
+    settledAmount: number;
+    outstandingAmount: number;
+    progressPercentage: number;
+    isFullySettled: boolean;
+  }> {
+    try {
+      // Get total expense amount
+      const expenses = await ExpenseModel.findByGroupId(groupId);
+      const totalExpenseAmount = expenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+      
+      // Get confirmed settlement amount
+      const settlements = await SettlementModel.findByGroupMembers(groupId);
+      const settledAmount = settlements
+        .filter(s => s && (s.status === 'CONFIRMED' || s.status === 'COMPLETED'))
+        .reduce((sum, settlement) => sum + Number(settlement.amount), 0);
+      
+      // Get outstanding balances
+      const outstandingBalances = await this.calculateGroupBalancesWithSettlements(groupId);
+      const outstandingAmount = outstandingBalances.reduce((sum, balance) => sum + balance.amount, 0);
+      
+      const progressPercentage = totalExpenseAmount > 0 
+        ? Math.round((settledAmount / totalExpenseAmount) * 100)
+        : 100;
+      
+      return {
+        totalExpenseAmount: Math.round(totalExpenseAmount * 100) / 100,
+        settledAmount: Math.round(settledAmount * 100) / 100,
+        outstandingAmount: Math.round(outstandingAmount * 100) / 100,
+        progressPercentage,
+        isFullySettled: outstandingBalances.length === 0,
+      };
+    } catch (error) {
+      console.error('Error in getGroupSettlementProgress:', error);
+      // Return default progress on error
+      return {
+        totalExpenseAmount: 0,
+        settledAmount: 0,
+        outstandingAmount: 0,
+        progressPercentage: 0,
+        isFullySettled: false,
+      };
+    }
+  }
+
+  /**
    * Real-time balance validation
    * Ensures balance calculations are mathematically sound
    */

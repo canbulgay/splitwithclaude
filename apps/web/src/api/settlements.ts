@@ -1,12 +1,18 @@
 import apiClient from ".";
 
+export type SettlementStatus = 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+
 export interface Settlement {
   id: string;
   fromUser: string;
   toUser: string;
   amount: number;
   description?: string;
-  settledAt: string;
+  status: SettlementStatus;
+  createdAt: string;
+  confirmedAt?: string;
+  completedAt?: string;
+  settledAt: string; // Deprecated, keeping for backward compatibility
   fromUserRel?: {
     id: string;
     name: string;
@@ -161,6 +167,81 @@ class SettlementsAPI {
     optimization: SettlementOptimization;
   }> {
     const response = await apiClient.get(`/settlements/suggestions/${groupId}`);
+    return response.data;
+  }
+
+  /**
+   * Get pending settlements requiring action
+   */
+  async getPendingSettlements(): Promise<{
+    needingConfirmation: Settlement[];
+    needingCompletion: Settlement[];
+    awaitingResponse: Settlement[];
+    total: number;
+  }> {
+    const response = await apiClient.get("/settlements/pending");
+    return response.data;
+  }
+
+  /**
+   * Confirm settlement (recipient confirms payment received)
+   */
+  async confirmSettlement(id: string): Promise<Settlement> {
+    const response = await apiClient.post(`/settlements/${id}/confirm`);
+    return response.data;
+  }
+
+  /**
+   * Complete settlement (payer marks as paid)
+   */
+  async completeSettlement(id: string): Promise<Settlement> {
+    const response = await apiClient.post(`/settlements/${id}/complete`);
+    return response.data;
+  }
+
+  /**
+   * Cancel settlement
+   */
+  async cancelSettlement(id: string, reason?: string): Promise<Settlement> {
+    const response = await apiClient.post(`/settlements/${id}/cancel`, { reason });
+    return response.data;
+  }
+
+  /**
+   * Settle entire group with optimized settlements
+   */
+  async settleGroup(groupId: string, description?: string): Promise<{
+    settlements: Settlement[];
+    progress: {
+      totalExpenseAmount: number;
+      settledAmount: number;
+      outstandingAmount: number;
+      progressPercentage: number;
+      isFullySettled: boolean;
+    };
+    isFullySettled: boolean;
+    message: string;
+  }> {
+    const response = await apiClient.post(`/settlements/group/${groupId}/settle-all`, { description });
+    return response.data;
+  }
+
+  /**
+   * Complete all confirmed settlements for a group
+   */
+  async completeGroupSettlements(groupId: string): Promise<{
+    completedSettlements: Settlement[];
+    progress: {
+      totalExpenseAmount: number;
+      settledAmount: number;
+      outstandingAmount: number;
+      progressPercentage: number;
+      isFullySettled: boolean;
+    };
+    isFullySettled: boolean;
+    message: string;
+  }> {
+    const response = await apiClient.post(`/settlements/group/${groupId}/complete-all`);
     return response.data;
   }
 }
