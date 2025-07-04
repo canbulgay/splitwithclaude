@@ -22,8 +22,106 @@ const updateSettlementSchema = z.object({
 });
 
 /**
- * POST /settlements
- * Create a new settlement
+ * @swagger
+ * /settlements:
+ *   post:
+ *     tags: [Settlements]
+ *     summary: Create a new settlement
+ *     description: Creates a new settlement between two users for debt resolution
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fromUser, toUser, amount]
+ *             properties:
+ *               fromUser:
+ *                 type: string
+ *                 pattern: '^c[a-z0-9]{24}$'
+ *                 description: User ID of who is paying
+ *                 example: clm123abc456def789ghi012k
+ *               toUser:
+ *                 type: string
+ *                 pattern: '^c[a-z0-9]{24}$'
+ *                 description: User ID of who is receiving payment
+ *                 example: clm123abc456def789ghi012l
+ *               amount:
+ *                 type: number
+ *                 format: decimal
+ *                 minimum: 0.01
+ *                 maximum: 999999.99
+ *                 multipleOf: 0.01
+ *                 description: Settlement amount
+ *                 example: 50.25
+ *               expenseIds:
+ *                 type: array
+ *                 description: Optional list of specific expense IDs being settled
+ *                 items:
+ *                   type: string
+ *                   pattern: '^c[a-z0-9]{24}$'
+ *                 example: ["clm123abc456def789ghi012m", "clm123abc456def789ghi012n"]
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Optional description for the settlement
+ *                 example: "Payment for dinner and movie expenses"
+ *           examples:
+ *             simple_settlement:
+ *               summary: Simple settlement between users
+ *               value:
+ *                 fromUser: "clm123abc456def789ghi012k"
+ *                 toUser: "clm123abc456def789ghi012l"
+ *                 amount: 50.25
+ *                 description: "Payment for shared expenses"
+ *             expense_settlement:
+ *               summary: Settlement for specific expenses
+ *               value:
+ *                 fromUser: "clm123abc456def789ghi012k"
+ *                 toUser: "clm123abc456def789ghi012l"
+ *                 amount: 75.50
+ *                 expenseIds: ["clm123abc456def789ghi012m"]
+ *                 description: "Settlement for dinner expense"
+ *     responses:
+ *       201:
+ *         description: Settlement created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Settlement created successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Settlement'
+ *       400:
+ *         description: Validation error or invalid settlement data
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - can only create settlements involving yourself
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/", authenticateToken, async (req, res) => {
   try {
@@ -112,8 +210,57 @@ router.post("/", authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /settlements/pending
- * Get pending settlements that need user action
+ * @swagger
+ * /settlements/pending:
+ *   get:
+ *     tags: [Settlements]
+ *     summary: Get pending settlements
+ *     description: Retrieves all pending settlements requiring user action (confirmation, completion, or awaiting response)
+ *     responses:
+ *       200:
+ *         description: Pending settlements retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     needingConfirmation:
+ *                       type: array
+ *                       description: Settlements where user needs to confirm payment received
+ *                       items:
+ *                         $ref: '#/components/schemas/Settlement'
+ *                     needingCompletion:
+ *                       type: array
+ *                       description: Settlements where user needs to mark as completed after paying
+ *                       items:
+ *                         $ref: '#/components/schemas/Settlement'
+ *                     awaitingResponse:
+ *                       type: array
+ *                       description: Settlements where user is waiting for recipient to confirm
+ *                       items:
+ *                         $ref: '#/components/schemas/Settlement'
+ *                     total:
+ *                       type: integer
+ *                       description: Total number of pending settlements
+ *                       example: 3
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/pending", authenticateToken, async (req, res) => {
   try {
@@ -157,8 +304,64 @@ router.get("/pending", authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /settlements
- * Get settlements for the authenticated user
+ * @swagger
+ * /settlements:
+ *   get:
+ *     tags: [Settlements]
+ *     summary: Get user settlements
+ *     description: Retrieves all settlements for the authenticated user with summary statistics
+ *     responses:
+ *       200:
+ *         description: Settlements retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     settlements:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Settlement'
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalCount:
+ *                           type: integer
+ *                           description: Total number of settlements
+ *                           example: 15
+ *                         totalSent:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Total amount sent by user
+ *                           example: 250.75
+ *                         totalReceived:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Total amount received by user
+ *                           example: 300.50
+ *                         netAmount:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Net amount (positive means user received more)
+ *                           example: 49.75
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/", authenticateToken, async (req, res) => {
   try {
@@ -198,8 +401,58 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /settlements/:id
- * Get a specific settlement by ID
+ * @swagger
+ * /settlements/{id}:
+ *   get:
+ *     tags: [Settlements]
+ *     summary: Get settlement details
+ *     description: Retrieves detailed information about a specific settlement
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the settlement
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Settlement details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Settlement'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - can only view settlements involving yourself
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Settlement not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/:id", authenticateToken, async (req, res) => {
   try {
@@ -246,8 +499,101 @@ router.get("/:id", authenticateToken, async (req, res) => {
 });
 
 /**
- * PUT /settlements/:id
- * Update a settlement (only creator can update)
+ * @swagger
+ * /settlements/{id}:
+ *   put:
+ *     tags: [Settlements]
+ *     summary: Update settlement
+ *     description: Updates settlement details (only the settlement creator can update)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the settlement
+ *         example: clm123abc456def789ghi012j
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 format: decimal
+ *                 minimum: 0.01
+ *                 maximum: 999999.99
+ *                 multipleOf: 0.01
+ *                 description: Updated settlement amount
+ *                 example: 75.50
+ *               description:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Updated description for the settlement
+ *                 example: "Updated payment description"
+ *           examples:
+ *             update_amount:
+ *               summary: Update only the amount
+ *               value:
+ *                 amount: 75.50
+ *             update_description:
+ *               summary: Update only the description
+ *               value:
+ *                 description: "Updated payment for shared dinner expenses"
+ *             update_both:
+ *               summary: Update both amount and description
+ *               value:
+ *                 amount: 85.25
+ *                 description: "Corrected amount for dinner and drinks"
+ *     responses:
+ *       200:
+ *         description: Settlement updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Settlement updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Settlement'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - only settlement creator can update
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Settlement not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.put("/:id", authenticateToken, async (req, res) => {
   try {
@@ -309,8 +655,59 @@ router.put("/:id", authenticateToken, async (req, res) => {
 });
 
 /**
- * DELETE /settlements/:id
- * Delete a settlement (only creator can delete)
+ * @swagger
+ * /settlements/{id}:
+ *   delete:
+ *     tags: [Settlements]
+ *     summary: Delete settlement
+ *     description: Permanently deletes a settlement (only the settlement creator can delete)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the settlement
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Settlement deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Settlement deleted successfully"
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - only settlement creator can delete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Settlement not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/:id", authenticateToken, async (req, res) => {
   try {
@@ -359,8 +756,91 @@ router.delete("/:id", authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /settlements/between/:user1/:user2
- * Get settlements between two specific users
+ * @swagger
+ * /settlements/between/{user1}/{user2}:
+ *   get:
+ *     tags: [Settlements]
+ *     summary: Get settlements between two users
+ *     description: Retrieves all settlements between two specific users with summary statistics
+ *     parameters:
+ *       - in: path
+ *         name: user1
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: First user's unique identifier
+ *         example: clm123abc456def789ghi012k
+ *       - in: path
+ *         name: user2
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Second user's unique identifier
+ *         example: clm123abc456def789ghi012l
+ *     responses:
+ *       200:
+ *         description: Settlements between users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     settlements:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Settlement'
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalSettlements:
+ *                           type: integer
+ *                           description: Total number of settlements between the users
+ *                           example: 5
+ *                         totalFromUser1ToUser2:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Total amount settled from user1 to user2
+ *                           example: 150.75
+ *                         totalFromUser2ToUser1:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Total amount settled from user2 to user1
+ *                           example: 75.25
+ *                         netAmount:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Absolute net difference
+ *                           example: 75.50
+ *                         netDirection:
+ *                           type: string
+ *                           description: Description of settlement direction or balance
+ *                           example: "user1 has settled $75.50 more to user2"
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - can only view settlements involving yourself
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/between/:user1/:user2", authenticateToken, async (req, res) => {
   try {
@@ -431,8 +911,95 @@ router.get("/between/:user1/:user2", authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /settlements/group/:groupId
- * Get settlements for a specific group
+ * @swagger
+ * /settlements/group/{groupId}:
+ *   get:
+ *     tags: [Settlements]
+ *     summary: Get group settlements
+ *     description: Retrieves all settlements for a specific group (only group members can access)
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the group
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Group settlements retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     settlements:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Settlement'
+ *                     group:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           example: clm123abc456def789ghi012j
+ *                         name:
+ *                           type: string
+ *                           example: "Weekend Trip"
+ *                         description:
+ *                           type: string
+ *                           example: "Mountain cabin getaway"
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalSettlements:
+ *                           type: integer
+ *                           description: Total number of settlements in the group
+ *                           example: 8
+ *                         totalAmount:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Total settlement amount in the group
+ *                           example: 450.75
+ *                         pendingSettlements:
+ *                           type: integer
+ *                           description: Number of pending settlements
+ *                           example: 2
+ *                         completedSettlements:
+ *                           type: integer
+ *                           description: Number of completed settlements
+ *                           example: 6
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Group not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/group/:groupId", authenticateToken, async (req, res) => {
   try {
@@ -541,8 +1108,67 @@ router.get("/suggestions/:groupId", authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /settlements/:id/confirm
- * Confirm settlement receipt (toUser confirms they received payment)
+ * @swagger
+ * /settlements/{id}/confirm:
+ *   post:
+ *     tags: [Settlements]
+ *     summary: Confirm settlement
+ *     description: Confirms that payment was received (only the recipient can confirm)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the settlement
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Settlement confirmed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Settlement confirmed successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Settlement'
+ *       400:
+ *         description: Invalid settlement status for confirmation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - only settlement recipient can confirm
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Settlement not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:id/confirm", authenticateToken, async (req, res) => {
   try {
@@ -602,8 +1228,67 @@ router.post("/:id/confirm", authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /settlements/:id/complete
- * Mark settlement as completed (fromUser marks as paid)
+ * @swagger
+ * /settlements/{id}/complete:
+ *   post:
+ *     tags: [Settlements]
+ *     summary: Complete settlement
+ *     description: Marks settlement as completed after payment (only the payer can complete)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the settlement
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Settlement completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Settlement completed successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Settlement'
+ *       400:
+ *         description: Invalid settlement status for completion
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - only settlement payer can complete
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Settlement not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:id/complete", authenticateToken, async (req, res) => {
   try {
@@ -663,8 +1348,86 @@ router.post("/:id/complete", authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /settlements/:id/cancel
- * Cancel a settlement (either party can cancel pending settlements)
+ * @swagger
+ * /settlements/{id}/cancel:
+ *   post:
+ *     tags: [Settlements]
+ *     summary: Cancel settlement
+ *     description: Cancels a settlement (either party involved can cancel pending/confirmed settlements)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the settlement
+ *         example: clm123abc456def789ghi012j
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Optional reason for cancellation
+ *                 example: "Payment method no longer available"
+ *           examples:
+ *             with_reason:
+ *               summary: Cancel with reason
+ *               value:
+ *                 reason: "Unable to complete payment due to bank issues"
+ *             without_reason:
+ *               summary: Cancel without reason
+ *               value: {}
+ *     responses:
+ *       200:
+ *         description: Settlement cancelled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Settlement cancelled successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Settlement'
+ *       400:
+ *         description: Invalid settlement status for cancellation
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - can only cancel settlements involving yourself
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Settlement not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/:id/cancel", authenticateToken, async (req, res) => {
   try {
@@ -725,8 +1488,89 @@ router.post("/:id/cancel", authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /settlements/group/:groupId/settle-all
- * Create optimized settlements to settle entire group
+ * @swagger
+ * /settlements/group/{groupId}/settle-all:
+ *   post:
+ *     tags: [Settlements]
+ *     summary: Settle all group balances
+ *     description: Creates optimized settlements to settle all outstanding balances in a group with minimal transactions
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the group
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       201:
+ *         description: Group settlements created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "3 settlements created to settle all group balances"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     settlements:
+ *                       type: array
+ *                       description: Created settlements
+ *                       items:
+ *                         $ref: '#/components/schemas/Settlement'
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalSettlements:
+ *                           type: integer
+ *                           description: Number of settlements created
+ *                           example: 3
+ *                         totalAmount:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Total amount being settled
+ *                           example: 245.75
+ *                         optimizationSavings:
+ *                           type: integer
+ *                           description: Number of transactions saved through optimization
+ *                           example: 2
+ *       400:
+ *         description: No outstanding balances to settle or validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Group not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post("/group/:groupId/settle-all", authenticateToken, async (req, res) => {
   try {

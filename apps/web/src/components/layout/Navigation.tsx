@@ -1,55 +1,55 @@
-import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { 
-  Home, 
-  Users, 
-  Receipt, 
-  CreditCard, 
-  Settings, 
-  LogOut, 
-  Menu, 
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Home,
+  Users,
+  Receipt,
+  CreditCard,
+  Settings,
+  LogOut,
+  Menu,
   X,
   Sun,
-  Moon
-} from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-import { Button } from '../ui/button'
-import { cn } from '../../lib/cn'
+  Moon,
+} from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import { Button } from "../ui/button";
+import { cn } from "../../lib/cn";
 
 interface NavigationItem {
-  name: string
-  href: string
-  icon: React.ComponentType<{ className?: string }>
-  current?: boolean
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  current?: boolean;
 }
 
 const navigation: NavigationItem[] = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Groups', href: '/groups', icon: Users },
-  { name: 'Expenses', href: '/expenses', icon: Receipt },
-  { name: 'Settlements', href: '/settlements', icon: CreditCard },
-  { name: 'Settings', href: '/settings', icon: Settings },
-]
+  { name: "Dashboard", href: "/dashboard", icon: Home },
+  { name: "Groups", href: "/groups", icon: Users },
+  { name: "Expenses", href: "/expenses", icon: Receipt },
+  { name: "Settlements", href: "/settlements", icon: CreditCard },
+  { name: "Settings", href: "/settings", icon: Settings },
+];
 
 interface NavigationProps {
-  darkMode: boolean
-  toggleDarkMode: () => void
+  darkMode: boolean;
+  toggleDarkMode: () => void;
 }
 
 export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const { user, logout } = useAuth()
-  const location = useLocation()
-  const navigate = useNavigate()
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
-      await logout()
-      navigate('/auth/login')
+      await logout();
+      navigate("/auth/login");
     } catch (error) {
-      console.error('Logout failed:', error)
+      console.error("Logout failed:", error);
     }
-  }
+  };
 
   return (
     <>
@@ -72,9 +72,13 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
           <div className="flex h-16 items-center justify-between px-4 border-b">
             <div className="flex items-center">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-sm">S</span>
+                <span className="text-primary-foreground font-bold text-sm">
+                  S
+                </span>
               </div>
-              <span className="ml-2 text-lg font-semibold">Splitwise</span>
+              <span className="ml-2 text-lg font-semibold">
+                Split With Claude
+              </span>
             </div>
             <Button
               variant="ghost"
@@ -87,7 +91,7 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
           </div>
           <nav className="flex-1 px-4 py-4 space-y-2">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href
+              const isActive = location.pathname === item.href;
               return (
                 <Link
                   key={item.name}
@@ -103,7 +107,7 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
                   <item.icon className="h-5 w-5 mr-3" />
                   {item.name}
                 </Link>
-              )
+              );
             })}
           </nav>
           <div className="p-4 border-t space-y-2">
@@ -117,7 +121,7 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
               ) : (
                 <Moon className="h-5 w-5 mr-3" />
               )}
-              {darkMode ? 'Light Mode' : 'Dark Mode'}
+              {darkMode ? "Light Mode" : "Dark Mode"}
             </Button>
             <Button
               variant="ghost"
@@ -136,13 +140,17 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
         <div className="flex flex-col flex-grow bg-card border-r">
           <div className="flex h-16 items-center px-4 border-b">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">S</span>
+              <span className="text-primary-foreground font-bold text-sm">
+                S
+              </span>
             </div>
-            <span className="ml-2 text-lg font-semibold">Splitwise</span>
+            <span className="ml-2 text-lg font-semibold">
+              Split With Claude
+            </span>
           </div>
           <nav className="flex-1 px-4 py-4 space-y-2">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href
+              const isActive = location.pathname === item.href;
               return (
                 <Link
                   key={item.name}
@@ -157,7 +165,7 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
                   <item.icon className="h-5 w-5 mr-3" />
                   {item.name}
                 </Link>
-              )
+              );
             })}
           </nav>
           <div className="p-4 border-t space-y-2">
@@ -190,7 +198,7 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
               ) : (
                 <Moon className="h-5 w-5 mr-3" />
               )}
-              {darkMode ? 'Light Mode' : 'Dark Mode'}
+              {darkMode ? "Light Mode" : "Dark Mode"}
             </Button>
             <Button
               variant="ghost"
@@ -216,7 +224,9 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
           </Button>
           <div className="flex items-center">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">S</span>
+              <span className="text-primary-foreground font-bold text-sm">
+                S
+              </span>
             </div>
             <span className="ml-2 text-lg font-semibold">Splitwise</span>
           </div>
@@ -224,5 +234,5 @@ export function Navigation({ darkMode, toggleDarkMode }: NavigationProps) {
         </div>
       </div>
     </>
-  )
+  );
 }

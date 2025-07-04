@@ -130,12 +130,12 @@ export function DashboardPage() {
                 type: "expense",
                 title: expense.description,
                 description: `Added by ${
-                  (expense.paidBy as any)?.name || "Unknown"
+                  (expense.payer as any)?.name || "Unknown"
                 }`,
                 amount: expense.amount,
                 timestamp: new Date(expense.createdAt),
                 groupName: group.name,
-                userName: (expense.paidBy as any)?.name || "Unknown",
+                userName: (expense.payer as any)?.name || "Unknown",
               });
             });
           } catch (err) {

@@ -24,8 +24,58 @@ const updateExpenseSchema = z.object({
 });
 
 /**
- * GET /expenses/:expenseId
- * Get expense details with splits
+ * @swagger
+ * /expenses/{expenseId}:
+ *   get:
+ *     tags: [Expenses]
+ *     summary: Get expense details
+ *     description: Retrieves detailed information about a specific expense including splits
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the expense
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Expense details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Expense'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Expense not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/:expenseId", authenticateToken, async (req, res) => {
   try {
@@ -74,8 +124,80 @@ router.get("/:expenseId", authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /expenses
- * Create a new expense
+ * @swagger
+ * /expenses:
+ *   post:
+ *     tags: [Expenses]
+ *     summary: Create a new expense
+ *     description: Creates a new expense within a group with split details
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateExpense'
+ *           examples:
+ *             dinner_expense:
+ *               summary: Group dinner expense
+ *               value:
+ *                 groupId: "clm123abc456def789ghi012j"
+ *                 amount: 120.50
+ *                 description: "Team dinner at Italian restaurant"
+ *                 category: "FOOD"
+ *                 paidBy: "clm123abc456def789ghi012k"
+ *                 splits:
+ *                   - userId: "clm123abc456def789ghi012k"
+ *                     amount: 40.17
+ *                   - userId: "clm123abc456def789ghi012l"
+ *                     amount: 40.17
+ *                   - userId: "clm123abc456def789ghi012m"
+ *                     amount: 40.16
+ *     responses:
+ *       201:
+ *         description: Expense created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Expense created successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Expense'
+ *       400:
+ *         description: Validation error or split amounts don't match total
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Group not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 
 router.post(
@@ -179,8 +301,132 @@ router.post(
 );
 
 /**
- * PUT /expenses/:expenseId
- * Update expense details
+ * @swagger
+ * /expenses/{expenseId}:
+ *   put:
+ *     tags: [Expenses]
+ *     summary: Update expense details
+ *     description: Updates an existing expense with new amount, description, category, payer, or splits
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the expense
+ *         example: clm123abc456def789ghi012j
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 format: decimal
+ *                 minimum: 0.01
+ *                 multipleOf: 0.01
+ *                 description: Updated expense amount
+ *                 example: 150.75
+ *               description:
+ *                 type: string
+ *                 minLength: 1
+ *                 maxLength: 200
+ *                 description: Updated expense description
+ *                 example: "Updated dinner at restaurant"
+ *               category:
+ *                 $ref: '#/components/schemas/ExpenseCategory'
+ *               paidBy:
+ *                 type: string
+ *                 pattern: '^c[a-z0-9]{24}$'
+ *                 description: User ID of who paid the expense
+ *                 example: clm123abc456def789ghi012k
+ *               splits:
+ *                 type: array
+ *                 description: How the expense is split between users
+ *                 items:
+ *                   type: object
+ *                   required: [userId, amount]
+ *                   properties:
+ *                     userId:
+ *                       type: string
+ *                       pattern: '^c[a-z0-9]{24}$'
+ *                       description: User ID for this split
+ *                       example: clm123abc456def789ghi012k
+ *                     amount:
+ *                       type: number
+ *                       format: decimal
+ *                       minimum: 0.01
+ *                       multipleOf: 0.01
+ *                       description: Amount owed by this user
+ *                       example: 50.25
+ *           examples:
+ *             update_amount:
+ *               summary: Update only the amount
+ *               value:
+ *                 amount: 150.75
+ *             update_full_expense:
+ *               summary: Update all expense details
+ *               value:
+ *                 amount: 150.75
+ *                 description: "Updated team dinner at fancy restaurant"
+ *                 category: "FOOD"
+ *                 paidBy: "clm123abc456def789ghi012k"
+ *                 splits:
+ *                   - userId: "clm123abc456def789ghi012k"
+ *                     amount: 50.25
+ *                   - userId: "clm123abc456def789ghi012l"
+ *                     amount: 50.25
+ *                   - userId: "clm123abc456def789ghi012m"
+ *                     amount: 50.25
+ *     responses:
+ *       200:
+ *         description: Expense updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Expense updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Expense'
+ *       400:
+ *         description: Validation error or split amounts don't match total
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Expense not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.put(
   "/:expenseId",
@@ -335,8 +581,59 @@ router.put(
 );
 
 /**
- * DELETE /expenses/:expenseId
- * Delete expense
+ * @swagger
+ * /expenses/{expenseId}:
+ *   delete:
+ *     tags: [Expenses]
+ *     summary: Delete expense
+ *     description: Permanently deletes an expense and all associated splits
+ *     parameters:
+ *       - in: path
+ *         name: expenseId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the expense
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Expense deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Expense deleted successfully"
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Expense not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.delete("/:expenseId", authenticateToken, async (req, res) => {
   try {

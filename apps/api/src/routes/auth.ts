@@ -18,8 +18,51 @@ const registerSchema = createUserSchema.extend({
 })
 
 /**
- * POST /auth/register
- * Register a new user
+ * @swagger
+ * /auth/register:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Register a new user
+ *     description: Creates a new user account with email and password authentication
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UserRegistration'
+ *           examples:
+ *             example1:
+ *               summary: New user registration
+ *               value:
+ *                 email: "john.doe@example.com"
+ *                 name: "John Doe"
+ *                 password: "securePassword123!"
+ *                 avatarUrl: "https://example.com/avatars/john.jpg"
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Registration failed - validation error or email already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               emailExists:
+ *                 summary: Email already registered
+ *                 value:
+ *                   success: false
+ *                   error: "Email already exists"
+ *               validationError:
+ *                 summary: Validation failed
+ *                 value:
+ *                   success: false
+ *                   error: "Password must be at least 8 characters"
+ *     security: []
  */
 router.post('/register', validateRequest(registerSchema), async (req, res) => {
   try {
@@ -53,8 +96,50 @@ router.post('/register', validateRequest(registerSchema), async (req, res) => {
 })
 
 /**
- * POST /auth/login
- * Login with email and password
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Login with email and password
+ *     description: Authenticates a user and returns a JWT token for subsequent API requests
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UserLogin'
+ *           examples:
+ *             example1:
+ *               summary: User login
+ *               value:
+ *                 email: "john.doe@example.com"
+ *                 password: "securePassword123!"
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       401:
+ *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               invalidCredentials:
+ *                 summary: Invalid email or password
+ *                 value:
+ *                   success: false
+ *                   error: "Invalid email or password"
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *     security: []
  */
 router.post('/login', validateRequest(loginSchema), async (req, res) => {
   try {
@@ -83,8 +168,46 @@ router.post('/login', validateRequest(loginSchema), async (req, res) => {
 })
 
 /**
- * POST /auth/refresh
- * Refresh an existing token
+ * @swagger
+ * /auth/refresh:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Refresh JWT token
+ *     description: |
+ *       Refreshes an existing JWT token to extend the session.
+ *       Requires a valid JWT token in the Authorization header.
+ *     responses:
+ *       200:
+ *         description: Token refreshed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Token refreshed successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *       400:
+ *         description: Token required for refresh
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Invalid or expired token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/refresh', authenticateToken, async (req, res) => {
   try {
@@ -118,8 +241,40 @@ router.post('/refresh', authenticateToken, async (req, res) => {
 })
 
 /**
- * GET /auth/me
- * Get current user information
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     tags: [Authentication]
+ *     summary: Get current user information
+ *     description: Returns the profile information of the currently authenticated user
+ *     responses:
+ *       200:
+ *         description: User information retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user:
+ *                       $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Authentication required or user not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get('/me', authenticateToken, async (req, res) => {
   try {
@@ -149,8 +304,34 @@ router.get('/me', authenticateToken, async (req, res) => {
 })
 
 /**
- * POST /auth/logout
- * Logout (client-side token invalidation)
+ * @swagger
+ * /auth/logout:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Logout user
+ *     description: |
+ *       Logs out the current user. Currently relies on client-side token removal.
+ *       In future versions, this may maintain a server-side token blacklist.
+ *     responses:
+ *       200:
+ *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Logout successful"
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/logout', authenticateToken, async (req, res) => {
   try {
@@ -169,8 +350,84 @@ router.post('/logout', authenticateToken, async (req, res) => {
 })
 
 /**
- * POST /auth/change-password
- * Change user password
+ * @swagger
+ * /auth/change-password:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Change user password
+ *     description: |
+ *       Changes the password for the authenticated user. Requires the current password
+ *       for security verification. Only available for users with password-based accounts
+ *       (not OAuth users).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *                 description: Current password for verification
+ *                 example: "oldPassword123!"
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *                 description: New password (minimum 8 characters)
+ *                 example: "newSecurePassword456!"
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Password changed successfully"
+ *       400:
+ *         description: Validation error or incorrect current password
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               wrongPassword:
+ *                 summary: Current password is incorrect
+ *                 value:
+ *                   success: false
+ *                   error: "Current password is incorrect"
+ *               oauthUser:
+ *                 summary: OAuth user cannot change password
+ *                 value:
+ *                   success: false
+ *                   error: "Cannot change password for social login accounts"
+ *               weakPassword:
+ *                 summary: New password validation failed
+ *                 value:
+ *                   success: false
+ *                   error: "Password validation failed"
+ *                   details:
+ *                     errors: ["Password must be at least 8 characters"]
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post('/change-password', authenticateToken, async (req, res) => {
   try {

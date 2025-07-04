@@ -103,6 +103,7 @@ export const expenseApi = {
     expenses: Expense[];
   }> {
     const response = await apiClient.get(`/groups/${groupId}/expenses`);
+    console.log("Expenses response:", response.data);
     return response.data.data;
   },
 };

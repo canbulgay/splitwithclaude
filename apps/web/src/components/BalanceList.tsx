@@ -60,6 +60,7 @@ export function BalanceList({
 
   const getBalanceText = (balance: Balance) => {
     const otherUser = getOtherUser(balance);
+    console.log("Other User:", otherUser);
     const type = getBalanceType(balance);
 
     if (type === "owe") {

@@ -15,10 +15,15 @@
     "db:reset": "tsx src/scripts/reset.ts",
     "db:studio": "prisma studio",
     "db:generate": "prisma generate",
+    "api-test": "tsx src/scripts/api-test-runner.ts",
+    "api-test:verbose": "VERBOSE=true tsx src/scripts/api-test-runner.ts",
     "clean": "rm -rf dist node_modules/.tsx"
   },
   "dependencies": {
     "@prisma/client": "^5.6.0",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "axios": "^1.10.0",
     "bcryptjs": "^2.4.3",
     "connect-redis": "^7.1.0",
     "cors": "^2.8.5",
@@ -33,6 +38,8 @@
     "morgan": "^1.10.0",
     "prisma": "^5.6.0",
     "redis": "^4.6.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^3.22.4"
   },
   "devDependencies": {

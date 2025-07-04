@@ -57,7 +57,7 @@ export function LoginPage() {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight">
-          Sign in to Splitwise
+          Sign in to Split With Claude
         </h2>
         <p className="mt-2 text-center text-sm text-muted-foreground">
           Or{" "}

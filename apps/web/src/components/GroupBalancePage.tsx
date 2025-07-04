@@ -48,10 +48,7 @@ export function GroupBalancePage() {
     await fetchBalances();
   };
 
-  const {
-    settleFromSuggestion,
-    error: settlementError,
-  } = useSettlements();
+  const { settleFromSuggestion, error: settlementError } = useSettlements();
 
   const handleSettleUp = async (suggestion: SettlementSuggestion) => {
     const success = await settleFromSuggestion(suggestion);
@@ -229,7 +226,7 @@ export function GroupBalancePage() {
               ? `You are owed $${netBalance.toFixed(2)} overall`
               : `You owe $${Math.abs(netBalance).toFixed(2)} overall`}
           </div>
-          
+
           {/* Group Settle All Button */}
           {groupId && (
             <GroupSettleAllButton

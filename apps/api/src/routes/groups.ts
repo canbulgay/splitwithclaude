@@ -31,8 +31,39 @@ const updateMemberRoleSchema = z.object({
 });
 
 /**
- * GET /groups
- * Get all groups for the authenticated user
+ * @swagger
+ * /groups:
+ *   get:
+ *     tags: [Groups]
+ *     summary: Get user's groups
+ *     description: Retrieves all groups that the authenticated user is a member of
+ *     responses:
+ *       200:
+ *         description: Groups retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Group'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/", authenticateToken, async (req, res) => {
   try {
@@ -60,8 +91,58 @@ router.get("/", authenticateToken, async (req, res) => {
 });
 
 /**
- * POST /groups
- * Create a new group
+ * @swagger
+ * /groups:
+ *   post:
+ *     tags: [Groups]
+ *     summary: Create a new group
+ *     description: Creates a new expense-sharing group with the authenticated user as admin
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateGroup'
+ *           examples:
+ *             example1:
+ *               summary: Weekend trip group
+ *               value:
+ *                 name: "Weekend Trip to Mountains"
+ *                 description: "Shared expenses for our weekend getaway"
+ *     responses:
+ *       201:
+ *         description: Group created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Group created successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Group'
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.post(
   "/",
@@ -105,8 +186,58 @@ router.post(
 );
 
 /**
- * GET /groups/:groupId
- * Get group details with members
+ * @swagger
+ * /groups/{groupId}:
+ *   get:
+ *     tags: [Groups]
+ *     summary: Get group details
+ *     description: Retrieves detailed information about a specific group including members
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the group
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Group details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Group'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Group not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get(
   "/:groupId",
@@ -488,9 +619,7 @@ router.get(
       );
 
       log("Fetched group expenses:", {
-        groupId,
-        filters,
-        totalExpenses: result.expenses.length,
+        result,
       });
 
       res.json({

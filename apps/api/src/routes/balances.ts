@@ -8,8 +8,100 @@ import { BalanceService } from "../services/BalanceService";
 const router: Router = Router();
 
 /**
- * GET /balances/group/:groupId
- * Get current balances for a group
+ * @swagger
+ * /balances/group/{groupId}:
+ *   get:
+ *     tags: [Balances]
+ *     summary: Get group balances
+ *     description: Retrieves current balances for all members in a group including settlement suggestions and progress
+ *     parameters:
+ *       - in: path
+ *         name: groupId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the group
+ *         example: clm123abc456def789ghi012j
+ *     responses:
+ *       200:
+ *         description: Group balances retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     balances:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Balance'
+ *                     suggestions:
+ *                       type: array
+ *                       description: Optimized settlement suggestions to minimize transactions
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           fromUserId:
+ *                             type: string
+ *                             example: clm123abc456def789ghi012k
+ *                           toUserId:
+ *                             type: string
+ *                             example: clm123abc456def789ghi012l
+ *                           amount:
+ *                             type: number
+ *                             format: decimal
+ *                             example: 25.50
+ *                           description:
+ *                             type: string
+ *                             example: "Payment to settle balance"
+ *                     progress:
+ *                       type: object
+ *                       properties:
+ *                         totalOwed:
+ *                           type: number
+ *                           format: decimal
+ *                           example: 150.75
+ *                         totalSettled:
+ *                           type: number
+ *                           format: decimal
+ *                           example: 100.25
+ *                         pendingSettlements:
+ *                           type: number
+ *                           format: decimal
+ *                           example: 25.50
+ *                         isFullySettled:
+ *                           type: boolean
+ *                           example: false
+ *                     groupId:
+ *                       type: string
+ *                       example: clm123abc456def789ghi012j
+ *                     isFullySettled:
+ *                       type: boolean
+ *                       example: false
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - not a group member
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/group/:groupId", authenticateToken, async (req, res) => {
   try {
@@ -62,8 +154,110 @@ router.get("/group/:groupId", authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /balances/user/:userId
- * Get user's balances across all groups
+ * @swagger
+ * /balances/user/{userId}:
+ *   get:
+ *     tags: [Balances]
+ *     summary: Get user balances
+ *     description: Retrieves user's balances across all groups they are a member of (users can only access their own balances)
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Unique identifier of the user (must match authenticated user)
+ *         example: clm123abc456def789ghi012k
+ *     responses:
+ *       200:
+ *         description: User balances retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalOwed:
+ *                       type: number
+ *                       format: decimal
+ *                       description: Total amount user owes across all groups
+ *                       example: 75.50
+ *                     totalOwedTo:
+ *                       type: number
+ *                       format: decimal
+ *                       description: Total amount owed to user across all groups
+ *                       example: 125.25
+ *                     netBalance:
+ *                       type: number
+ *                       format: decimal
+ *                       description: Net balance (positive means user is owed money)
+ *                       example: 49.75
+ *                     groupBalances:
+ *                       type: array
+ *                       description: Balance breakdown by group
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           group:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: clm123abc456def789ghi012j
+ *                               name:
+ *                                 type: string
+ *                                 example: "Weekend Trip"
+ *                               description:
+ *                                 type: string
+ *                                 example: "Mountain cabin getaway"
+ *                           balances:
+ *                             type: array
+ *                             items:
+ *                               $ref: '#/components/schemas/Balance'
+ *                           suggestions:
+ *                             type: array
+ *                             description: Settlement suggestions for this group
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 fromUserId:
+ *                                   type: string
+ *                                 toUserId:
+ *                                   type: string
+ *                                 amount:
+ *                                   type: number
+ *                                   format: decimal
+ *                                 description:
+ *                                   type: string
+ *                           netGroupBalance:
+ *                             type: number
+ *                             format: decimal
+ *                             description: User's net balance in this group
+ *                             example: 25.50
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - can only view own balances
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/user/:userId", authenticateToken, async (req, res) => {
   try {
@@ -154,8 +348,99 @@ router.get("/user/:userId", authenticateToken, async (req, res) => {
 });
 
 /**
- * GET /balances/between/:user1/:user2
- * Get balances between two specific users across all shared groups
+ * @swagger
+ * /balances/between/{user1}/{user2}:
+ *   get:
+ *     tags: [Balances]
+ *     summary: Get balances between two users
+ *     description: Retrieves balances between two specific users across all their shared groups
+ *     parameters:
+ *       - in: path
+ *         name: user1
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: First user's unique identifier
+ *         example: clm123abc456def789ghi012k
+ *       - in: path
+ *         name: user2
+ *         required: true
+ *         schema:
+ *           type: string
+ *           pattern: '^c[a-z0-9]{24}$'
+ *         description: Second user's unique identifier
+ *         example: clm123abc456def789ghi012l
+ *     responses:
+ *       200:
+ *         description: Balances between users retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user1:
+ *                       type: string
+ *                       example: clm123abc456def789ghi012k
+ *                     user2:
+ *                       type: string
+ *                       example: clm123abc456def789ghi012l
+ *                     netBalance:
+ *                       type: object
+ *                       properties:
+ *                         amount:
+ *                           type: number
+ *                           format: decimal
+ *                           description: Net amount owed between the users
+ *                           example: 25.50
+ *                         direction:
+ *                           type: string
+ *                           description: Who owes whom or if they are even
+ *                           example: "user1 owes user2"
+ *                           enum: ["Even", "user1 owes user2", "user2 owes user1"]
+ *                     groups:
+ *                       type: array
+ *                       description: Breakdown by shared groups where balances exist
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           group:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 example: clm123abc456def789ghi012j
+ *                               name:
+ *                                 type: string
+ *                                 example: "Weekend Trip"
+ *                           balances:
+ *                             type: array
+ *                             items:
+ *                               $ref: '#/components/schemas/Balance'
+ *       401:
+ *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       403:
+ *         description: Access denied - can only view balances involving yourself
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/between/:user1/:user2", authenticateToken, async (req, res) => {
   try {
