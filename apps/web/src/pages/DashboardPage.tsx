@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Users, Receipt, CreditCard, TrendingUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Layout } from "../components/layout";
 import { Button } from "../components/ui/button";
@@ -42,6 +43,7 @@ const GroupOverview = lazy(() =>
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [balanceSummary, setBalanceSummary] =
@@ -63,6 +65,24 @@ export function DashboardPage() {
       userName?: string;
     }>
   >([]);
+
+  // Quick action handlers
+  const handleAddExpense = () => {
+    navigate('/expenses');
+  };
+
+  const handleCreateGroup = () => {
+    navigate('/groups');
+  };
+
+  const handleSettleBalance = () => {
+    navigate('/settlements');
+  };
+
+  const handleInviteFriends = () => {
+    // TODO: Implement invite functionality
+    console.log('Invite friends functionality coming soon');
+  };
 
   const stats = [
     {
@@ -196,7 +216,7 @@ export function DashboardPage() {
               Welcome back, {user?.name}! Here's your expense overview.
             </p>
           </div>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={handleAddExpense}>
             <Plus className="h-4 w-4" />
             Add Expense
           </Button>
@@ -301,6 +321,7 @@ export function DashboardPage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
+                  onClick={handleCreateGroup}
                 >
                   <Plus className="h-4 w-4" />
                   Create New Group
@@ -308,6 +329,7 @@ export function DashboardPage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
+                  onClick={handleAddExpense}
                 >
                   <Receipt className="h-4 w-4" />
                   Add Expense
@@ -315,6 +337,7 @@ export function DashboardPage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
+                  onClick={handleSettleBalance}
                 >
                   <CreditCard className="h-4 w-4" />
                   Settle Balance
@@ -322,6 +345,7 @@ export function DashboardPage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-2"
+                  onClick={handleInviteFriends}
                 >
                   <Users className="h-4 w-4" />
                   Invite Friends
